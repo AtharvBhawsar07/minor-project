@@ -1,46 +1,7 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from '../services/api';
-import { normalizeAPIResponse } from '../utils/apiHelpers';
 
-// ─────────────────────────────────────────────────────────────
-// LOCAL HELPERS
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Normalises the user object returned by the API.
- * Handles both `res.data.user`, `res.data.data`, and flat `res.data`.
- */
-const normalizeUser = (raw) => {
-  if (!raw) return null;
-
-  // Some backends nest under a "user" key
-  const user = raw?.user ?? raw;
-
-  if (!user || typeof user !== 'object') return null;
-
-  const normalizeRole = (role) => {
-    const r = role?.toString?.().trim?.().toLowerCase?.();
-    if (r === 'student') return 'Student';
-    if (r === 'librarian') return 'Librarian';
-    if (r === 'admin') return 'Admin';
-    // Default to Student for a college submission-friendly experience
-    return 'Student';
-  };
-
-  return {
-    _id:    user._id   ?? user.id   ?? null,
-    name:   user.name  ?? user.fullName ?? 'User',
-    email:  user.email ?? null,
-    role:   normalizeRole(user.role),
-    // Spread remaining fields so nothing is lost
-    ...user,
-  };
-};
-
-// ─────────────────────────────────────────────────────────────
-// CONTEXT
-// ─────────────────────────────────────────────────────────────
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -49,8 +10,55 @@ export const useAuth = () => {
   return ctx;
 };
 
-// ─────────────────────────────────────────────────────────────
-// PROVIDER
+// ── Safely pull the user object out of any API shape ─────────────────────────
+const extractUser = (res) => {
+  if (!res) return null;
+  // res.data.data.user  (nested paginated)
+  if (res?.data?.data?.user)  return res.data.data.user;
+  // res.data.data        (single object)
+  if (res?.data?.data && typeof res.data.data === 'object' && !Array.isArray(res.data.data)) {
+    return res.data.data;
+  }
+  // res.data.user
+  if (res?.data?.user)   return res.data.user;
+  // res.data itself
+  if (res?.data && typeof res.data === 'object') return res.data;
+  return null;
+};
+
+const extractToken = (res) => {
+  return (
+    res?.data?.data?.accessToken ||
+    res?.data?.accessToken ||
+    null
+  );
+};
+
+// Normalise role so comparisons are consistent
+const normalizeRole = (role) => {
+  const r = (role || '').toString().trim().toLowerCase();
+  if (r === 'student')   return 'Student';
+  if (r === 'librarian') return 'Librarian';
+  if (r === 'admin')     return 'Admin';
+  return 'Student';
+};
+
+const buildUser = (raw) => {
+  if (!raw || typeof raw !== 'object') return null;
+  const user = raw.user ?? raw; // some responses nest under "user"
+  if (!user?._id && !user?.id) return null;
+  return {
+    _id:       user._id   ?? user.id,
+    name:      user.name  ?? user.fullName ?? 'User',
+    email:     user.email ?? null,
+    role:      normalizeRole(user.role),
+    studentId: user.studentId ?? null,
+    ...user,
+    // override role with normalized version
+    role: normalizeRole(user.role),
+  };
+};
+
 // ─────────────────────────────────────────────────────────────
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -59,19 +67,24 @@ export const AuthProvider = ({ children }) => {
 
   // ── Restore session on mount ─────────────────────────────
   const checkSession = useCallback(async () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      setAuthLoading(false);
+      return;
+    }
     setAuthLoading(true);
-    setAuthError(null);
     try {
       const res  = await authAPI.me();
-      const data = normalizeAPIResponse(res);
-      setCurrentUser(normalizeUser(data));
+      const raw  = extractUser(res);
+      const user = buildUser(raw);
+      setCurrentUser(user);
     } catch (err) {
-      // 401 = not logged in — treat as null, not an error
+      // 401 = token expired — clear silently
       if (err?.response?.status === 401 || err?.statusCode === 401) {
+        localStorage.removeItem('accessToken');
         setCurrentUser(null);
       } else {
         console.error('Session check error:', err);
-        setAuthError('Could not verify session.');
         setCurrentUser(null);
       }
     } finally {
@@ -81,30 +94,27 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkSession();
-    
-    // Listen for global auth:logout event to handle 401s centrally without looping
-    const handleLogoutEvent = () => {
+
+    const handleLogout = () => {
       localStorage.removeItem('accessToken');
       setCurrentUser(null);
     };
-    window.addEventListener('auth:logout', handleLogoutEvent);
-    
-    return () => window.removeEventListener('auth:logout', handleLogoutEvent);
+    window.addEventListener('auth:logout', handleLogout);
+    return () => window.removeEventListener('auth:logout', handleLogout);
   }, [checkSession]);
 
   // ── Login ─────────────────────────────────────────────────
   const login = async (payload) => {
     setAuthError(null);
     try {
-      const res  = await authAPI.login(payload);
-      const data = normalizeAPIResponse(res);
-      const user = normalizeUser(data);
+      const res   = await authAPI.login(payload);
+      const token = extractToken(res);
+      const raw   = extractUser(res);
+      const user  = buildUser(raw);
+
       if (!user) throw new Error('Invalid response from server.');
-      
-      if (data?.accessToken) {
-        localStorage.setItem('accessToken', data.accessToken);
-      }
-      
+
+      if (token) localStorage.setItem('accessToken', token);
       setCurrentUser(user);
       return { success: true, user };
     } catch (err) {
@@ -121,15 +131,13 @@ export const AuthProvider = ({ children }) => {
   const register = async (payload) => {
     setAuthError(null);
     try {
-      const res  = await authAPI.register(payload);
-      const data = normalizeAPIResponse(res);
-      const user = normalizeUser(data);
-      
-      if (data?.accessToken) {
-        localStorage.setItem('accessToken', data.accessToken);
-      }
-      
-      if (user) setCurrentUser(user);
+      const res   = await authAPI.register(payload);
+      const token = extractToken(res);
+      const raw   = extractUser(res);
+      const user  = buildUser(raw);
+
+      if (token) localStorage.setItem('accessToken', token);
+      if (user)  setCurrentUser(user);
       return { success: true, user };
     } catch (err) {
       const message =
@@ -143,31 +151,11 @@ export const AuthProvider = ({ children }) => {
 
   // ── Logout ────────────────────────────────────────────────
   const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (err) {
-      // Ignore logout errors
-    } finally {
-      localStorage.removeItem('accessToken');
-      setCurrentUser(null);
-    }
+    try { await authAPI.logout(); } catch (_) { /* ignore */ }
+    localStorage.removeItem('accessToken');
+    setCurrentUser(null);
   };
 
-  // ── Update profile (optimistic) ──────────────────────────
-  const updateProfile = async (updates) => {
-    try {
-      const res  = await authAPI.updateProfile(updates);
-      const data = normalizeAPIResponse(res);
-      const user = normalizeUser(data);
-      if (user) setCurrentUser(user);
-      return { success: true, user };
-    } catch (err) {
-      const message = err?.response?.data?.message ?? err?.message ?? 'Update failed.';
-      return { success: false, message };
-    }
-  };
-
-  // ── Context value ─────────────────────────────────────────
   const value = {
     currentUser,
     authLoading,
@@ -176,7 +164,6 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    updateProfile,
     refreshSession: checkSession,
   };
 

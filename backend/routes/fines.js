@@ -8,44 +8,27 @@ const { protect, authorize } = require('../middlewares/auth');
 const { ApiResponse, asyncHandler, getPagination } = require('../utils/apiResponse');
 
 // GET /api/fines/my-fines
-router.get('/my-fines', protect, authorize('student', 'librarian', 'admin'), asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req.query);
+router.get('/my-fines', protect, asyncHandler(async (req, res) => {
+  // Students see own fines; staff can also call this for themselves
   const filter = { student: req.user._id };
-  
-  const [fines, total] = await Promise.all([
-    Fine.find(filter)
-      .populate('book', 'title author')
-      .populate('issueRecord', 'issueDate dueDate returnDate')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Fine.countDocuments(filter),
-  ]);
-  
-  // Calculate fine amounts and overdue days
-  const enrichedFines = fines.map(fine => {
-    const today = new Date();
-    const dueDate = fine.issueRecord?.dueDate ? new Date(fine.issueRecord.dueDate) : null;
-    const returnDate = fine.issueRecord?.returnDate ? new Date(fine.issueRecord.returnDate) : null;
-    
-    let overdueDays = 0;
-    let calculatedAmount = fine.amount || 0;
-    
-    if (dueDate && !returnDate && fine.status === 'pending') {
-      overdueDays = Math.max(0, Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24)));
-      calculatedAmount = overdueDays * 5; // ₹5 per day
-    }
-    
-    return {
-      ...fine,
-      overdueDays,
-      calculatedAmount,
-      remainingAmount: calculatedAmount - (fine.paidAmount || 0)
-    };
-  });
-  
-  return ApiResponse.paginated(res, { data: enrichedFines, page, limit, total });
+
+  const fines = await Fine.find(filter)
+    .populate('book', 'title author')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Fine model already stores dueDate, returnDate, overdueDays, amount
+  // Just normalise field names for the frontend
+  const enrichedFines = fines.map(fine => ({
+    ...fine,
+    // calculatedFine = stored amount (calculated at time of return)
+    calculatedFine: fine.amount || 0,
+    calculatedAmount: fine.amount || 0,
+    overdueDays: fine.overdueDays || 0,
+    remainingAmount: (fine.amount || 0) - (fine.paidAmount || 0),
+  }));
+
+  return ApiResponse.success(res, { data: enrichedFines });
 }));
 
 // GET /api/fines/stats

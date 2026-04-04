@@ -74,7 +74,7 @@ const HomePage = () => {
       <div style={{ background: '#163354', padding: '1.25rem 1rem' }}>
         <div style={{ maxWidth: 700, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', textAlign: 'center', gap: '1rem' }}>
           {[
-            { val: '12+',  label: 'Books'       },
+            { val: '20',   label: 'Books'       },
             { val: '3',    label: 'User Roles'  },
             { val: '100%', label: 'Free'        },
             { val: '24/7', label: 'Access'      },

@@ -1,14 +1,7 @@
+// src/pages/RequestCardPage.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { libraryCardsAPI, booksAPI } from '../services/api';
-
-const normalizeAPIResponse = (response) => {
-  if (!response) return null;
-  if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-    return response.data.data;
-  }
-  return response.data;
-};
 
 const RequestCardPage = () => {
   const { currentUser } = useAuth();
@@ -16,147 +9,196 @@ const RequestCardPage = () => {
   const [form, setForm] = useState({
     course: '',
     branch: '',
-    year: '',
-    type: 'temporary',
-    notes: '',
-    bookId: ''
+    year:   '',
+    type:   'temporary',
+    notes:  '',
+    bookId: '',
   });
-  const [status, setStatus] = useState(null); // 'idle', 'loading', 'success', 'error'
-  const [errorMsg, setErrorMsg] = useState('');
-  const [existingCards, setExistingCards] = useState([]);
-  const [books, setBooks] = useState([]);
 
+  const [submitting,     setSubmitting]     = useState(false);
+  const [successMsg,     setSuccessMsg]     = useState('');
+  const [errorMsg,       setErrorMsg]       = useState('');
+  const [existingCards,  setExistingCards]  = useState([]);
+  const [books,          setBooks]          = useState([]);
+  const [loadingBooks,   setLoadingBooks]   = useState(true);
+
+  // ── Load existing cards + available books ─────────────────
   useEffect(() => {
-    // Check if they already have cards
+    // Fetch student's own cards
     libraryCardsAPI.getAll()
       .then(res => {
-        const cards = normalizeAPIResponse(res);
-        setExistingCards(Array.isArray(cards) ? cards : []);
+        const data = res?.data?.data || res?.data || [];
+        setExistingCards(Array.isArray(data) ? data : []);
       })
-      .catch(err => {
-        if (err.statusCode !== 404) console.error(err);
-        setExistingCards([]);
-      });
+      .catch(() => setExistingCards([]));
 
+    // Fetch all books (available only for dropdown)
+    setLoadingBooks(true);
     booksAPI.getAll()
       .then(res => {
-        const b = normalizeAPIResponse(res);
-        setBooks(Array.isArray(b) ? b.filter(book => book.availableCopies > 0) : []);
+        const data = res?.data?.data || res?.data || [];
+        const allBooks = Array.isArray(data) ? data : [];
+        // Show all books with available copies
+        setBooks(allBooks.filter(b => (b.availableCopies || 0) > 0));
       })
-      .catch(console.error);
+      .catch(() => setBooks([]))
+      .finally(() => setLoadingBooks(false));
   }, []);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    setErrorMsg('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (existingCards.length >= 5) {
-      setStatus('error');
-      setErrorMsg('Maximum 5 cards allowed');
-      return;
-    }
-
-    const selectedBook = books.find(b => b._id === form.bookId);
-    if (!selectedBook || selectedBook.availableCopies === 0) {
-      setStatus('error');
-      setErrorMsg('Book not available');
-      return;
-    }
-
-    setStatus('loading');
     setErrorMsg('');
+    setSuccessMsg('');
 
+    // Frontend validation
+    if (!form.bookId) { setErrorMsg('Please select a book.'); return; }
+    if (!form.course)  { setErrorMsg('Please select a course.'); return; }
+    if (!form.branch.trim()) { setErrorMsg('Please enter your branch.'); return; }
+    if (!form.year.trim())   { setErrorMsg('Please enter your year.'); return; }
+
+    // Enforce max 5 cards (blocking statuses only)
+    const BLOCKING = ['pending', 'approved_pending_pickup', 'issued'];
+    const activeCards = existingCards.filter(c => BLOCKING.includes(c.status));
+    if (activeCards.length >= 5) {
+      setErrorMsg('Maximum 5 library cards allowed per student.');
+      return;
+    }
+
+    // Enforce type limits (count only issued cards)
+    const issuedCards = existingCards.filter(c => c.status === 'issued');
+    if (form.type === 'temporary' && issuedCards.filter(c => c.type === 'temporary').length >= 3) {
+      setErrorMsg('Maximum 3 temporary cards reached.');
+      return;
+    }
+    if (form.type === 'permanent' && issuedCards.filter(c => c.type === 'permanent').length >= 2) {
+      setErrorMsg('Maximum 2 permanent cards reached.');
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const res = await libraryCardsAPI.apply(form);
-      const newCard = normalizeAPIResponse(res);
-      
-      const requests = [...existingCards];
-      requests.push(newCard); // Using push as required
-      setExistingCards(requests);
-      
-      setStatus('success');
+      const newCard = res?.data?.data || res?.data || {};
+
+      // push() — do not overwrite existing cards
+      setExistingCards(prev => [...prev, newCard]);
+      setSuccessMsg('Application submitted! Waiting for librarian approval.');
+      // reset form
+      setForm({ course: '', branch: '', year: '', type: 'temporary', notes: '', bookId: '' });
     } catch (err) {
-      console.error(err);
-      setStatus('error');
-      setErrorMsg(err.message || 'Failed to submit application.');
+      // API interceptor returns { message, statusCode, errors } — use err.message
+      const msg = err?.message
+        || err?.response?.data?.message
+        || 'Failed to submit application. Please try again.';
+      setErrorMsg(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Calculate card usage
-  const approvedCards = existingCards.filter(card => card.status === 'approved');
-  const pendingCards = existingCards.filter(card => card.status === 'pending');
-  const tempCards = approvedCards.filter(card => card.type === 'temporary');
-  const permCards = approvedCards.filter(card => card.type === 'permanent');
-  const canRequestMore = approvedCards.length < 5 && pendingCards.length < 2;
-  const canRequestTemp = tempCards < 3;
-  const canRequestPerm = permCards < 2;
+  // ── Derived counts ─────────────────────────────────────────
+  // Active = blocking statuses (pending + approved_pending_pickup + issued)
+  const BLOCKING = ['pending', 'approved_pending_pickup', 'issued'];
+  const activeCards   = existingCards.filter(c => BLOCKING.includes(c.status));
+  const pendingCards  = existingCards.filter(c => c.status === 'pending');
+  const issuedCards   = existingCards.filter(c => c.status === 'issued');
+  const tempCards     = issuedCards.filter(c => c.type === 'temporary');
+  const permCards     = issuedCards.filter(c => c.type === 'permanent');
+
+  const totalActive    = activeCards.length;
+  const canRequestMore = totalActive < 5;
+  const canRequestTemp = tempCards.length < 3;
+  const canRequestPerm = permCards.length < 2;
 
   return (
     <div className="page-wrapper">
       <div className="container">
         <div className="row justify-content-center">
           <div className="col-lg-8">
+
+            {/* Header */}
             <div className="mb-4">
               <h2 className="section-title">
                 <i className="bi bi-credit-card me-2" style={{ color: 'var(--accent)' }}></i>
                 Request Library Card
               </h2>
-              <p className="section-subtitle">Apply for a digital library card to borrow books</p>
+              <p className="section-subtitle">Select a book and apply for a library card</p>
             </div>
 
             {/* Card Usage Summary */}
             <div className="lib-card mb-4 p-3">
-              <h6 className="mb-3">Your Library Cards</h6>
-              <div className="row text-center">
+              <h6 className="mb-3 fw-bold">Your Card Usage</h6>
+              <div className="row text-center g-3">
                 <div className="col-3">
-                  <div className="text-success fw-bold">{approvedCards.length}</div>
-                  <small className="text-muted">Approved</small>
+                  <div className="fw-bold text-success fs-5">{issuedCards.length}</div>
+                  <small className="text-muted">Issued</small>
                 </div>
                 <div className="col-3">
-                  <div className="text-warning fw-bold">{pendingCards.length}</div>
-                  <small className="text-muted">Pending</small>
+                  <div className="fw-bold text-warning fs-5">
+                    {existingCards.filter(c => c.status === 'approved_pending_pickup').length}
+                  </div>
+                  <small className="text-muted">Pickup</small>
                 </div>
                 <div className="col-3">
-                  <div className="text-info fw-bold">{tempCards.length}/3</div>
+                  <div className="fw-bold text-info fs-5">{tempCards.length}/3</div>
                   <small className="text-muted">Temporary</small>
                 </div>
                 <div className="col-3">
-                  <div className="text-primary fw-bold">{permCards.length}/2</div>
+                  <div className="fw-bold text-primary fs-5">{permCards.length}/2</div>
                   <small className="text-muted">Permanent</small>
                 </div>
               </div>
               <div className="mt-3 text-center">
-                <span className="badge bg-success">Cards used: {approvedCards.length}/5</span>
+                <span className={`badge ${totalActive >= 5 ? 'bg-danger' : 'bg-success'}`}>
+                  {totalActive}/5 cards active
+                </span>
               </div>
             </div>
 
-            {/* Existing Cards Display */}
+            {/* Existing Cards */}
             {existingCards.length > 0 && (
               <div className="lib-card mb-4 p-4">
-                <h6 className="mb-3">Your Library Cards</h6>
-                <div className="row">
-                  {existingCards.map((card, index) => (
-                    <div key={card._id || index} className="col-md-6 mb-3">
+                <h6 className="mb-3 fw-bold">My Library Cards</h6>
+                <div className="row g-2">
+                  {existingCards.map((card, idx) => (
+                    <div key={card._id || idx} className="col-md-6">
                       <div className="border rounded p-3">
-                        <div className="d-flex justify-content-between align-items-start">
-                          <div>
-                            <strong>Card #{card.cardNumber?.slice(-4) || 'N/A'}</strong>
-                            <div className={`badge-role badge-${card.status.toLowerCase()} mt-1`}>
-                              {card.status}
-                            </div>
-                            <div className="text-muted small mt-1">
-                              Type: {card.type} • Book: {card.book?.title || 'None'}
-                            </div>
-                          </div>
-                          {card.status === 'rejected' && (
-                            <div className="text-danger small">
-                              <strong>Reason:</strong> {card.rejectionReason || 'No reason'}
-                            </div>
-                          )}
+                        <div className="fw-semibold mb-1">
+                          Card #{(card.cardNumber || '').slice(-8) || 'N/A'}
                         </div>
+                        <span className={`badge-role badge-${(card.status || 'pending').replace(/_/g, '-')}`}>
+                          {/* Human-readable status */}
+                          {card.status === 'approved_pending_pickup' ? '📦 Ready for Pickup'
+                            : card.status === 'issued'   ? '✅ Issued'
+                            : card.status === 'returned' ? '↩ Returned — slot free'
+                            : (card.status || 'pending').replace(/_/g, ' ')}
+                        </span>
+                        <div className="text-muted small mt-1">
+                          {card.type} · {card.book?.title || 'No book'}
+                        </div>
+                        {/* Pickup deadline warning */}
+                        {card.status === 'approved_pending_pickup' && card.pickupDeadline && (
+                          <div className="text-warning small mt-1">
+                            ⏰ Collect by {new Date(card.pickupDeadline).toLocaleDateString()}
+                          </div>
+                        )}
+                        {/* Due date if issued */}
+                        {card.status === 'issued' && card.dueDate && (
+                          <div className="text-success small mt-1">
+                            Due: {new Date(card.dueDate).toLocaleDateString()}
+                          </div>
+                        )}
+                        {card.status === 'rejected' && card.rejectionReason && (
+                          <div className="text-danger small mt-1">
+                            Reason: {card.rejectionReason}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -167,54 +209,72 @@ const RequestCardPage = () => {
             {/* Request Form */}
             {canRequestMore ? (
               <div className="lib-card p-4">
-                {status === 'success' && (
-                  <div className="alert alert-success lib-alert mb-4">
-                    <i className="bi bi-check-circle-fill me-2"></i>Application submitted successfully! It is now pending review.
+                <h6 className="mb-3 fw-bold">New Card Application</h6>
+
+                {successMsg && (
+                  <div className="alert alert-success mb-3">
+                    <i className="bi bi-check-circle-fill me-2"></i>{successMsg}
+                  </div>
+                )}
+                {errorMsg && (
+                  <div className="alert alert-danger mb-3">
+                    <i className="bi bi-exclamation-triangle me-2"></i>{errorMsg}
                   </div>
                 )}
 
-                {status === 'error' && (
-                  <div className="alert alert-danger mb-4">{errorMsg}</div>
-                )}
-
-                {status !== 'success' && (
-                  <form onSubmit={handleSubmit}>
-                    <div className="mb-3">
+                <form onSubmit={handleSubmit}>
+                  {/* Student info (read-only) */}
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-6">
                       <label className="lib-label">Student Name</label>
                       <input type="text" className="form-control" value={currentUser?.name || ''} disabled />
                     </div>
-                    
-                    <div className="mb-3">
+                    <div className="col-md-6">
                       <label className="lib-label">Student ID</label>
-                      <input type="text" className="form-control" value={currentUser?.studentId || ''} disabled />
+                      <input type="text" className="form-control" value={currentUser?.studentId || currentUser?.email || ''} disabled />
                     </div>
+                  </div>
 
-                    <div className="mb-3">
-                      <label className="lib-label">Issue Type</label>
-                      <select name="type" className="form-select" value={form.type} onChange={handleChange}>
-                        <option value="temporary" disabled={!canRequestTemp}>
-                          Temporary (15 Days) {canRequestTemp ? '' : '(Limit reached)'}
-                        </option>
-                        <option value="permanent" disabled={!canRequestPerm}>
-                          Permanent (Semester End) {canRequestPerm ? '' : '(Limit reached)'}
-                        </option>
-                      </select>
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="lib-label">Select Book</label>
+                  {/* Book Selection */}
+                  <div className="mb-3">
+                    <label className="lib-label">Select Book <span className="text-danger">*</span></label>
+                    {loadingBooks ? (
+                      <div className="text-muted">Loading books…</div>
+                    ) : books.length === 0 ? (
+                      <div className="alert alert-warning py-2 mb-0">
+                        No books currently available. Please check back later.
+                      </div>
+                    ) : (
                       <select name="bookId" className="form-select" value={form.bookId} onChange={handleChange} required>
-                        <option value="">-- Choose a Book --</option>
+                        <option value="">-- Choose an available book --</option>
                         {books.map(b => (
-                          <option key={b._id} value={b._id}>{b.title} (Avail: {b.availableCopies})</option>
+                          <option key={b._id} value={b._id}>
+                            {b.title} — {b.author} [{b.semester}] (Avail: {b.availableCopies})
+                          </option>
                         ))}
                       </select>
-                    </div>
+                    )}
+                  </div>
 
-                    <div className="mb-3">
-                      <label className="lib-label">Course</label>
+                  {/* Card Type */}
+                  <div className="mb-3">
+                    <label className="lib-label">Card Type <span className="text-danger">*</span></label>
+                    <select name="type" className="form-select" value={form.type} onChange={handleChange}>
+                      <option value="temporary" disabled={!canRequestTemp}>
+                        Temporary (15 Days){!canRequestTemp ? ' — Limit reached' : ''}
+                      </option>
+                      <option value="permanent" disabled={!canRequestPerm}>
+                        Permanent (Semester End){!canRequestPerm ? ' — Limit reached' : ''}
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Course / Branch / Year */}
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-4">
+                      <label className="lib-label">Course <span className="text-danger">*</span></label>
                       <select name="course" className="form-select" value={form.course} onChange={handleChange} required>
-                        <option value="">Select Course</option>
+                        <option value="">Select</option>
                         <option value="BTech">B.Tech</option>
                         <option value="Pharmacy">Pharmacy</option>
                         <option value="Law">Law</option>
@@ -223,51 +283,54 @@ const RequestCardPage = () => {
                         <option value="BCA">BCA</option>
                       </select>
                     </div>
-
-                    <div className="mb-3">
-                      <label className="lib-label">Branch</label>
-                      <input type="text" name="branch" className="form-control" value={form.branch} onChange={handleChange} required placeholder="e.g. CSE, IT" />
+                    <div className="col-md-4">
+                      <label className="lib-label">Branch <span className="text-danger">*</span></label>
+                      <input type="text" name="branch" className="form-control" value={form.branch}
+                        onChange={handleChange} placeholder="e.g. CSE, IT" required />
                     </div>
-
-                    <div className="mb-3">
-                      <label className="lib-label">Year</label>
-                      <input type="text" name="year" className="form-control" value={form.year} onChange={handleChange} required placeholder="e.g. 1st Year, 2nd Year" />
+                    <div className="col-md-4">
+                      <label className="lib-label">Year <span className="text-danger">*</span></label>
+                      <input type="text" name="year" className="form-control" value={form.year}
+                        onChange={handleChange} placeholder="e.g. 2nd Year" required />
                     </div>
+                  </div>
 
-                    <div className="mb-3">
-                      <label className="lib-label">Application Notes (Optional)</label>
-                      <textarea 
-                        name="notes"
-                        className="form-control" 
-                        rows="3" 
-                        value={form.notes} 
-                        onChange={handleChange}
-                        placeholder="Any additional information for the librarian..."
-                      ></textarea>
-                    </div>
+                  {/* Notes */}
+                  <div className="mb-4">
+                    <label className="lib-label">Notes (Optional)</label>
+                    <textarea name="notes" className="form-control" rows="2"
+                      value={form.notes} onChange={handleChange}
+                      placeholder="Any additional notes for the librarian…" />
+                  </div>
 
-                    <button type="submit" className="btn btn-lib-primary" disabled={status === 'loading'}>
-                      {status === 'loading' ? 'Submitting...' : 'Submit Application'}
-                    </button>
-                  </form>
-                )}
+                  <button type="submit" className="btn btn-lib-primary" disabled={submitting || books.length === 0}>
+                    {submitting
+                      ? <><span className="spinner-border spinner-border-sm me-2"></span>Submitting…</>
+                      : <><i className="bi bi-send me-2"></i>Submit Application</>}
+                  </button>
+                </form>
               </div>
             ) : (
               <div className="lib-card p-4 text-center">
-                <div className="alert alert-warning">
+                <div className="alert alert-warning mb-0">
                   <i className="bi bi-exclamation-triangle me-2"></i>
                   <strong>Card Limit Reached</strong>
                   <p className="mb-0 mt-2">
-                    You have reached the maximum limit of {approvedCards.length} approved cards or have too many pending applications.
+                    You have reached the maximum of 5 library cards (approved + pending).
                   </p>
                 </div>
               </div>
             )}
-            
-            <div className="alert lib-alert alert-info mt-3" style={{ background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.2)', color: '#4338ca' }}>
+
+            {/* Info note */}
+            <div className="alert alert-info mt-3" style={{ fontSize: '.85rem' }}>
               <i className="bi bi-info-circle me-2"></i>
-              <strong>Note:</strong> Library cards are typically approved within 1–2 working days. Once approved, you can visit the library to get books issued to your account.
+              <strong>How it works:</strong>
+              &nbsp;① Submit request → ② Librarian approves (you get 2 days to collect) →
+              ③ Visit library with ID → Librarian marks collected → Book issued.
+              Max: 3 Temporary (15 days) + 2 Permanent (semester).
             </div>
+
           </div>
         </div>
       </div>

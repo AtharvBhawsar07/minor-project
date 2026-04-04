@@ -444,3 +444,20 @@
 [2026-04-03 18:48:51] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
 [2026-04-03 18:48:51] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
 [2026-04-03 18:48:52] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 13:09:53] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:11:05] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:27:50] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:28:01] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:29:13] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:33:29] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:35:04] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:36:27] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-04 13:44:56] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 13:44:57] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 13:45:02] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 13:45:03] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 13:45:03] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 18:05:01] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 18:05:09] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 18:06:09] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1
+[2026-04-04 18:07:48] ERROR: 409 - Duplicate value for field: student - /api/library-cards/apply - POST - ::1

@@ -1,72 +1,88 @@
 const express = require('express');
 const router = express.Router();
 const Book = require('../models/Book');
-const IssueRecord = require('../models/IssueRecord');
 const { protect, authorize } = require('../middlewares/auth');
-const { ApiResponse, asyncHandler, getPagination } = require('../utils/apiResponse');
+const { ApiResponse, asyncHandler } = require('../utils/apiResponse');
+const LibraryCard = require('../models/LibraryCard');
 
-// GET /api/books
+// GET /api/books  — returns all active books (no pagination so frontend gets all)
 router.get('/', protect, asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req.query);
-  const { search, genre, available, sort } = req.query;
+  const { search, semester, available } = req.query;
+
   const filter = { isActive: true };
-
-  if (search) filter.$text = { $search: search };
-  if (genre) filter.genre = genre;
+  if (semester)          filter.semester = semester;
   if (available === 'true') filter.availableCopies = { $gt: 0 };
+  if (search) {
+    filter.$or = [
+      { title:  { $regex: search, $options: 'i' } },
+      { author: { $regex: search, $options: 'i' } },
+    ];
+  }
 
-  const sortObj = sort === 'title' ? { title: 1 } : sort === 'author' ? { author: 1 } : { createdAt: -1 };
-
-  const [books, total] = await Promise.all([
-    Book.find(filter).sort(sortObj).skip(skip).limit(limit).lean(),
-    Book.countDocuments(filter),
-  ]);
-  return ApiResponse.paginated(res, { data: books, page, limit, total });
+  const books = await Book.find(filter).sort({ semester: 1, title: 1 }).lean();
+  return res.json({ success: true, data: books });
 }));
 
-// GET /api/books/genres
-router.get('/genres', protect, asyncHandler(async (req, res) => {
-  const genres = await Book.distinct('genre', { isActive: true, genre: { $ne: null } });
-  return ApiResponse.success(res, { data: genres });
+// GET /api/books/semesters  — distinct semester values
+router.get('/semesters', protect, asyncHandler(async (req, res) => {
+  const semesters = await Book.distinct('semester', { isActive: true });
+  return ApiResponse.success(res, { data: semesters.sort() });
 }));
 
 // GET /api/books/:id
 router.get('/:id', protect, asyncHandler(async (req, res) => {
-  const book = await Book.findById(req.params.id).populate('addedBy', 'name');
+  const book = await Book.findById(req.params.id);
   if (!book || !book.isActive) return ApiResponse.notFound(res, 'Book not found');
   return ApiResponse.success(res, { data: book });
 }));
 
-// GET /api/books/:id/history
-router.get('/:id/history', protect, authorize('librarian', 'admin'), asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req.query);
-  const [records, total] = await Promise.all([
-    IssueRecord.find({ book: req.params.id })
-      .populate('student', 'name email studentId')
-      .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    IssueRecord.countDocuments({ book: req.params.id }),
-  ]);
-  return ApiResponse.paginated(res, { data: records, page, limit, total });
-}));
-
-// POST /api/books
+// POST /api/books  — Librarian / Admin only
 router.post('/', protect, authorize('librarian', 'admin'), asyncHandler(async (req, res) => {
   const book = await Book.create({ ...req.body, addedBy: req.user._id });
   return ApiResponse.created(res, { message: 'Book added successfully', data: book });
 }));
 
-// PUT /api/books/:id
+// PUT /api/books/:id  — Librarian / Admin only
 router.put('/:id', protect, authorize('librarian', 'admin'), asyncHandler(async (req, res) => {
   const book = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!book) return ApiResponse.notFound(res, 'Book not found');
   return ApiResponse.success(res, { message: 'Book updated', data: book });
 }));
 
-// DELETE /api/books/:id
+// DELETE /api/books/:id  — Admin only (soft delete)
 router.delete('/:id', protect, authorize('admin'), asyncHandler(async (req, res) => {
   const book = await Book.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
   if (!book) return ApiResponse.notFound(res, 'Book not found');
-  return ApiResponse.success(res, { message: 'Book deactivated' });
+  return ApiResponse.success(res, { message: 'Book removed' });
 }));
 
+// ── Auto-approve rejected cards when a returned book becomes available ─────────
+// Called internally from issueController after book.incrementAvailable()
+const autoApproveRejected = async (bookId) => {
+  try {
+    const book = await Book.findById(bookId);
+    if (!book || book.availableCopies <= 0) return;
+
+    // Find oldest rejected card for this book
+    const card = await LibraryCard.findOne({ book: bookId, status: 'rejected' }).sort({ createdAt: 1 });
+    if (!card) return;
+
+    const days = card.type === 'permanent' ? 180 : 15;
+    card.status     = 'approved';
+    card.validFrom  = new Date();
+    card.validUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    await card.save();
+
+    // Reserve one copy for them
+    await Book.findOneAndUpdate(
+      { _id: bookId, availableCopies: { $gt: 0 } },
+      { $inc: { availableCopies: -1 } }
+    );
+    console.log(`[AutoApprove] Card ${card._id} auto-approved for book ${book.title}`);
+  } catch (err) {
+    console.error('[AutoApprove] Error:', err.message);
+  }
+};
+
 module.exports = router;
+module.exports.autoApproveRejected = autoApproveRejected;

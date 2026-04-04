@@ -7,6 +7,7 @@
 
 
 require('dotenv').config();
+const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -58,32 +59,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Rate limiting - Increased limits for development
+// Rate limiting — set very high in development so users never see 429 errors
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // Increased from 100 to 1000
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100000,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'Too many requests. Please try again later.',
-  },
-  skip: (req) => req.path === '/api/health', // Skip health checks
-});
-
-// Relaxed limiter for auth routes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200, // Increased from 20 to 200
-  message: {
-    success: false,
-    message: 'Too many authentication attempts. Please wait 15 minutes.',
-  },
+  skip: () => process.env.NODE_ENV !== 'production', // Completely skip in dev
+  message: { success: false, message: 'Too many requests. Please try again later.' },
 });
 
 app.use('/api/', limiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
 
 // ─── General Middleware ───────────────────────────────────────────────────────
 app.use(compression());
@@ -125,6 +111,25 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await connectDB();
+
+    // Remove legacy unique index on `student` (old schema: one card per user).
+    // New flow allows multiple library card documents per student (returned/rejected/expired free slots).
+    try {
+      const LibraryCard = require('./models/LibraryCard');
+      await LibraryCard.syncIndexes();
+      const coll = mongoose.connection.collection('librarycards');
+      const indexes = await coll.indexes();
+      for (const idx of indexes) {
+        const key = idx.key || {};
+        const keyNames = Object.keys(key);
+        if (idx.unique && keyNames.length === 1 && keyNames[0] === 'student') {
+          await coll.dropIndex(idx.name);
+          logger.info(`Removed obsolete unique index on student: ${idx.name}`);
+        }
+      }
+    } catch (idxErr) {
+      logger.warn(`Library card index cleanup: ${idxErr?.message || idxErr}`);
+    }
   } catch (err) {
     logger.error(`Startup aborted: could not connect to MongoDB. ${err?.message || err}`);
     logger.error('Check Atlas IP whitelist (Network Access) and MONGODB_URI in backend/.env');

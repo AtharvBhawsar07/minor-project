@@ -1,201 +1,181 @@
-import React, { useMemo, useState, useEffect } from 'react';
+// src/pages/DashboardPage.js
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { booksAPI, finesAPI, libraryCardsAPI, issuesAPI } from '../services/api';
 
-import { normalizeAPIResponse, ensureArray, safeNumber, getFineAmount } from '../utils/apiHelpers';
-
-// ================= HELPERS (LOCAL OVERRIDES) =================
-
-const calculateTotalFines = (fines) => {
-  const safeArray = Array.isArray(fines) ? fines : [];
-  return safeArray.reduce((sum, fine) => {
-    return sum + getFineAmount(fine);
-  }, 0);
+// ── Safe array from API response ─────────────────────────────
+const safeList = (res) => {
+  const raw = res?.data?.data || res?.data || [];
+  return Array.isArray(raw) ? raw : [];
 };
 
-// ================= COMPONENTS =================
+// ── Human-readable status label ───────────────────────────────
+const statusLabel = (status = '') => {
+  const map = {
+    pending:                  'Pending Review',
+    approved_pending_pickup:  'Ready for Pickup 📦',
+    issued:                   'Issued ✅',
+    returned:                 '↩ Returned',   // slot is now free
+    rejected:                 'Rejected',
+    expired:                  'Expired',
+    suspended:                'Suspended',
+  };
+  return map[status] || status.replace(/_/g, ' ');
+};
 
-const StatCard = ({ icon, color, value, label }) => (
-  <div className="col-sm-6 col-lg-3">
-    <div className="stat-card">
-      <div className={`stat-icon ${color}`}>
-        <i className={`bi ${icon}`}></i>
-      </div>
-      <div>
-        <div className="stat-value">{value ?? 0}</div>
-        <div className="stat-label">{label}</div>
-      </div>
-    </div>
-  </div>
-);
-
-const QuickAction = ({ to, icon, label, color }) => (
-  <Link to={to} className="lib-card p-3 d-flex align-items-center gap-3 text-decoration-none">
-    <div className={`stat-icon ${color}`}>
-      <i className={`bi ${icon}`}></i>
-    </div>
-    <span>{label}</span>
-  </Link>
-);
-
-// ================= MAIN =================
+// ── Badge CSS class from status ───────────────────────────────
+const badgeClass = (status = '') =>
+  `badge-role badge-${status.replace(/_/g, '-')}`;
 
 const DashboardPage = () => {
   const { currentUser } = useAuth();
-  const role = currentUser?.role;
-  const roleLower = (role || '').toString().trim().toLowerCase();
-  const safeArray = (val) => (Array.isArray(val) ? val : []);
+  const role      = currentUser?.role || '';
+  const roleLower = role.toLowerCase();
 
-  const [loading, setLoading] = useState(true);
+  const [loading,   setLoading]   = useState(true);
+  const [books,     setBooks]     = useState([]);
+  const [fines,     setFines]     = useState([]);
+  const [requests,  setRequests]  = useState([]);
+  const [issues,    setIssues]    = useState([]);
   const [actionMsg, setActionMsg] = useState('');
-  const [data, setData] = useState({
-    books: [],
-    fines: [],
-    requests: [],
-    myCard: null,
-    issues: []
-  });
 
+  // ── Load all data ─────────────────────────────────────────
   useEffect(() => {
-    const fetchData = async () => {
+    if (!role) return;
+
+    const load = async () => {
+      setLoading(true);
       try {
-        const booksRes = await booksAPI.getAll();
-        const finesRes = roleLower === "student"
-          ? await finesAPI.getMyFines()
-          : await finesAPI.getAll();
+        const [booksRes, finesRes, cardsRes, issuesRes] = await Promise.allSettled([
+          booksAPI.getAll(),
+          roleLower === 'student' ? finesAPI.getMyFines() : finesAPI.getAll(),
+          libraryCardsAPI.getAll(),
+          issuesAPI.getAll(),
+        ]);
 
-        const cardsRes = roleLower === "student"
-          ? await libraryCardsAPI.getAll().catch(() => ({ data: [] }))
-          : await libraryCardsAPI.getAll();
-
-        const issuesRes = await issuesAPI.getAll();
-
-        // Safe API response handling: res.data.data OR res.data OR []
-        const booksResult = normalizeAPIResponse(booksRes);
-        const finesResult = normalizeAPIResponse(finesRes);
-        const cardsResult = normalizeAPIResponse(cardsRes);
-        const issuesResult = normalizeAPIResponse(issuesRes);
-
-        setData({
-          books: ensureArray(booksResult),
-          fines: ensureArray(finesResult),
-          requests: ensureArray(cardsResult),
-          issues: ensureArray(issuesResult),
-          myCard: cardsResult
-        });
-
+        setBooks(    booksRes.status   === 'fulfilled' ? safeList(booksRes.value)  : []);
+        setFines(    finesRes.status   === 'fulfilled' ? safeList(finesRes.value)  : []);
+        setRequests( cardsRes.status   === 'fulfilled' ? safeList(cardsRes.value)  : []);
+        setIssues(   issuesRes.status  === 'fulfilled' ? safeList(issuesRes.value) : []);
       } catch (err) {
-        console.error("Dashboard error:", err);
+        console.error('Dashboard load error:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (role) fetchData();
-  }, [role]); // Remove roleLower to prevent duplicate calls
+    load();
+  }, [role]); // eslint-disable-line
 
-  const { cardUsageText, notificationItems } = useMemo(() => {
-    const maxCards = 5;
-    const active = safeArray(data?.issues).filter((i) => i && i.status === 'issued' && !i.returnDate);
-    const used = active.length;
+  // ── Derived stats ─────────────────────────────────────────
+  const availableBooks = books.filter(b => (b.availableCopies || 0) > 0).length;
+  const activeIssues   = issues.filter(i => i.status === 'issued' && !i.returnDate);
+  const unpaidFines    = fines.filter(f => ['pending', 'partial'].includes((f.status || '').toLowerCase()));
+  const totalUnpaid    = unpaidFines.reduce((s, f) => s + (f.amount || f.calculatedAmount || 0), 0);
 
-    const today = new Date();
-    const stripTime = (d) => {
-      const x = new Date(d);
-      x.setHours(0, 0, 0, 0);
-      return x;
-    };
-    const diffDays = (a, b) => Math.floor((stripTime(a) - stripTime(b)) / (1000 * 60 * 60 * 24));
+  // Active card slots: pending + approved_pending_pickup + issued (NOT returned/rejected/expired)
+  const ACTIVE_CARD_STATUSES = ['pending', 'approved_pending_pickup', 'issued'];
+  const activeCardCount = requests.filter(c => ACTIVE_CARD_STATUSES.includes(c?.status)).length;
+  const cardUsage  = `${activeCardCount}/5`;
 
-    const notifications = [];
-    for (const issue of active) {
-      const title = issue?.book?.title || 'Book';
-      const issueType = (issue?.issueType || '').toString().toLowerCase();
-      const dueDate = issue?.dueDate ? new Date(issue.dueDate) : null;
-      const semesterEnd = issue?.semesterEndDate ? new Date(issue.semesterEndDate) : null;
-      const graceUntil = issue?.graceUntil ? new Date(issue.graceUntil) : null;
-
-      if (!dueDate) continue;
-
-      if (issueType === 'temporary') {
-        const daysLeft = diffDays(dueDate, today);
-        if (daysLeft === 2) notifications.push({ type: 'warning', text: `"${title}": 2 days left` });
-        if (daysLeft === 1) notifications.push({ type: 'warning', text: `"${title}": 1 day left` });
-        if (daysLeft <= 0) notifications.push({ type: 'danger', text: `"${title}": Overdue` });
-      } else if (issueType === 'permanent') {
-        const sem = semesterEnd || dueDate;
-        const grace = graceUntil || (() => {
-          const d = new Date(sem);
-          d.setDate(d.getDate() + 5);
-          return d;
-        })();
-
-        const daysToSemEnd = diffDays(sem, today);
-        if (daysToSemEnd === 2) notifications.push({ type: 'warning', text: `"${title}": Semester ends in 2 days` });
-        if (daysToSemEnd === 1) notifications.push({ type: 'warning', text: `"${title}": Semester ends tomorrow` });
-        if (today > sem && today <= grace) notifications.push({ type: 'info', text: `"${title}": Grace period active` });
-        if (today > grace) notifications.push({ type: 'danger', text: `"${title}": Fine started` });
-      }
-    }
-
-    return {
-      cardUsageText: `${used}/${maxCards} used`,
-      notificationItems: notifications.slice(0, 6),
-    };
-  }, [data.issues]);
-
-  if (loading) return <div className="text-center py-5">Loading...</div>;
-
-  const books = safeArray(data?.books);
-  const fines = safeArray(data?.fines);
-  const issues = safeArray(data?.issues);
-  const requests = safeArray(data?.requests);
-
-  // Backend fine statuses are: pending, partial, paid, waived
-  const unpaidFines = fines.filter((f) => {
-    const s = (f?.status || '').toString().toLowerCase();
-    return s === 'pending' || s === 'partial';
-  });
-
-  const availableBooks = books.filter(b => {
-    const copies =
-      b?.availableCopies ??
-      b?.available ??
-      b?.quantity ??
-      0;
-    return Number(copies) > 0;
-  }).length;
-
-  const activeIssues = issues.filter(i => !i?.returnDate);
-  const totalFines = calculateTotalFines(unpaidFines);
-
+  // ── Staff action: Approve ─────────────────────────────────
   const handleApprove = async (id) => {
     try {
       await libraryCardsAPI.approve(id);
-      alert('✅ Approved successfully!');
-      window.location.reload();
+      setRequests(prev => prev.map(r =>
+        r._id === id ? { ...r, status: 'approved_pending_pickup' } : r
+      ));
+      setActionMsg('✅ Card approved! Student can now come for pickup.');
+      setTimeout(() => setActionMsg(''), 5000);
     } catch (err) {
       alert('❌ ' + (err.message || 'Approval failed'));
     }
   };
 
+  // ── Staff action: Reject ──────────────────────────────────
   const handleReject = async (id) => {
-    const reason = prompt('Enter rejection reason:');
+    const reason = window.prompt('Enter rejection reason:');
     if (!reason) return;
     try {
       await libraryCardsAPI.reject(id, reason);
-      alert('✅ Rejected successfully!');
-      window.location.reload();
+      setRequests(prev => prev.map(r =>
+        r._id === id ? { ...r, status: 'rejected' } : r
+      ));
+      setActionMsg('Card rejected.');
+      setTimeout(() => setActionMsg(''), 4000);
     } catch (err) {
       alert('❌ ' + (err.message || 'Rejection failed'));
     }
   };
 
+  // ── Staff action: Mark as Collected ──────────────────────
+  // Called after librarian physically verifies student's ID card
+  const handleCollect = async (id) => {
+    const ok = window.confirm(
+      'Confirm: Student ID verified. Mark this book as collected and issue it?'
+    );
+    if (!ok) return;
+    try {
+      const res = await libraryCardsAPI.collect(id);
+      const updatedCard = res?.data?.data || {};
+      setRequests(prev => prev.map(r =>
+        r._id === id ? { ...r, status: 'issued', dueDate: updatedCard.dueDate } : r
+      ));
+      setActionMsg(`✅ Book issued! Due: ${updatedCard.dueDate ? new Date(updatedCard.dueDate).toLocaleDateString() : 'N/A'}`);
+      setTimeout(() => setActionMsg(''), 6000);
+    } catch (err) {
+      alert('❌ ' + (err.message || 'Could not mark as collected'));
+    }
+  };
+
+  // ── Staff action: Run expiry check ────────────────────────
+  const handleRunExpire = async () => {
+    try {
+      const res = await libraryCardsAPI.runExpire();
+      const count = res?.data?.data?.expiredCount || 0;
+      setActionMsg(`🕐 Expired ${count} overdue pickup request(s).`);
+      // Refresh the list
+      const cardsRes = await libraryCardsAPI.getAll();
+      setRequests(safeList(cardsRes));
+      setTimeout(() => setActionMsg(''), 5000);
+    } catch (err) {
+      alert('❌ ' + (err.message || 'Expiry check failed'));
+    }
+  };
+
+  // Return book → status returned, frees one of 5 card slots
+  const handleReturnCard = async (id) => {
+    const ok = window.confirm('Confirm the book was returned? This unlocks one card slot.');
+    if (!ok) return;
+    try {
+      await libraryCardsAPI.returnBook(id);
+      setRequests((prev) => prev.map((r) => (r._id === id ? { ...r, status: 'returned' } : r)));
+      setActionMsg('Book returned. Card slot unlocked.');
+      setTimeout(() => setActionMsg(''), 5000);
+    } catch (err) {
+      alert('❌ ' + (err.message || 'Return failed'));
+    }
+  };
+
+  if (loading) return (
+    <div className="text-center py-5">
+      <div className="spinner-border text-primary"></div>
+      <p className="mt-2 text-muted">Loading dashboard…</p>
+    </div>
+  );
+
+  // ── Staff: requests needing action ───────────────────────
+  const pendingForReview  = requests.filter(r => r.status === 'pending');
+  const awaitingPickup    = requests.filter(r => r.status === 'approved_pending_pickup');
+
   return (
-    <div className="container mt-4">
+    <div className="container mt-4 pb-5">
+
+      {/* Welcome */}
       <div className="d-flex align-items-center gap-3 mb-4">
-        <div style={{ width: 50, height: 50, borderRadius: '50%', background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 50, height: 50, borderRadius: '50%', background: '#1e3a5f',
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <i className="bi bi-person text-white" style={{ fontSize: '1.5rem' }}></i>
         </div>
         <div>
@@ -204,124 +184,117 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      <div className="row g-3">
-        <StatCard icon="bi-book" color="red" value={availableBooks} label="Books Available" />
-        <StatCard icon="bi-cash" color="green" value={`₹${totalFines}`} label="Unpaid Fines" />
-        <StatCard icon="bi-list-check" color="blue" value={activeIssues.length} label="Active Issues" />
-        {roleLower === "student" && (
-          <StatCard icon="bi-credit-card" color="gold" value={cardUsageText} label="Card Usage" />
-        )}
-      </div>
-
-      <div className="mt-4 d-flex flex-wrap gap-3">
-        <QuickAction to="/books" icon="bi-search" label="Browse Books" color="red" />
-        <QuickAction to="/fines" icon="bi-currency-rupee" label="View Fines" color="green" />
-        {roleLower === "student" && !data.myCard && (
-          <QuickAction to="/request-card" icon="bi-credit-card-2-front" label="Apply for Card" color="gold" />
-        )}
-      </div>
-
-      {/* Notifications (simple) */}
-      {roleLower === 'student' && (
-        <div className="mt-4 lib-card p-4">
-          <h4 className="mb-3">
-            <i className="bi bi-bell me-2"></i>
-            Notifications
-          </h4>
-          {notificationItems.length === 0 ? (
-            <div className="text-muted">No notifications</div>
-          ) : (
-            <ul className="mb-0">
-              {notificationItems.map((n, idx) => (
-                <li key={idx} className="mb-2">
-                  <span className={`badge-role badge-${n.type} me-2`}>{n.type}</span>
-                  {n.text}
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* Stat Cards */}
+      <div className="row g-3 mb-4">
+        <div className="col-sm-6 col-lg-3">
+          <div className="stat-card">
+            <div className="stat-icon blue"><i className="bi bi-book"></i></div>
+            <div><div className="stat-value">{availableBooks}</div><div className="stat-label">Books Available</div></div>
+          </div>
         </div>
-      )}
-
-      {/* Issued books list (student) */}
-      {roleLower === 'student' && (
-        <div className="mt-4 lib-card p-4">
-          <h4 className="mb-3">
-            <i className="bi bi-journal-check me-2"></i>
-            Issued Books
-          </h4>
-          {activeIssues.length === 0 ? (
-            <div className="text-muted">No books issued</div>
-          ) : (
-            <div className="table-responsive">
-              <table className="lib-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Book</th>
-                    <th>Type</th>
-                    <th>Due</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeIssues.map((r, idx) => {
-                    const isOverdue = !!r?.isOverdue;
-                    const issueType = (r?.issueType || '').toString().toLowerCase();
-                    const today = new Date();
-                    const sem = r?.semesterEndDate ? new Date(r.semesterEndDate) : (r?.dueDate ? new Date(r.dueDate) : null);
-                    const grace = r?.graceUntil ? new Date(r.graceUntil) : (sem ? new Date(new Date(sem).setDate(sem.getDate() + 5)) : null);
-                    const inGrace = issueType === 'permanent' && sem && grace && today > sem && today <= grace;
-
-                    const label = isOverdue ? 'Overdue' : inGrace ? 'Grace Period' : 'Active';
-                    const badge = isOverdue ? 'danger' : inGrace ? 'info' : 'approved';
-
-                    return (
-                      <tr key={r._id ?? idx}>
-                        <td>{idx + 1}</td>
-                        <td>{r.book?.title ?? 'N/A'}</td>
-                        <td className="text-capitalize">{issueType || 'N/A'}</td>
-                        <td>{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : 'N/A'}</td>
-                        <td>
-                          <span className={`badge-role badge-${badge}`}>{label}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        <div className="col-sm-6 col-lg-3">
+          <div className="stat-card">
+            <div className="stat-icon red"><i className="bi bi-cash"></i></div>
+            <div><div className="stat-value">₹{totalUnpaid}</div><div className="stat-label">Unpaid Fines</div></div>
+          </div>
+        </div>
+        <div className="col-sm-6 col-lg-3">
+          <div className="stat-card">
+            <div className="stat-icon green"><i className="bi bi-list-check"></i></div>
+            <div><div className="stat-value">{activeIssues.length}</div><div className="stat-label">Active Issues</div></div>
+          </div>
+        </div>
+        {roleLower === 'student' ? (
+          <div className="col-sm-6 col-lg-3">
+            <div className="stat-card">
+              <div className="stat-icon gold"><i className="bi bi-credit-card"></i></div>
+              <div><div className="stat-value">{cardUsage}</div><div className="stat-label">Active cards</div></div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="col-sm-6 col-lg-3">
+            <div className="stat-card">
+              <div className="stat-icon gold"><i className="bi bi-card-checklist"></i></div>
+              <div>
+                <div className="stat-value">{pendingForReview.length + awaitingPickup.length}</div>
+                <div className="stat-label">Needs Action</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* Requests Table for Student */}
-      {roleLower === "student" && requests.length > 0 && (
-        <div className="mt-4 lib-card p-4">
-          <h4 className="mb-3">
-            <i className="bi bi-card-list me-2"></i>
-            My Book Requests
-          </h4>
+      {/* Quick Actions */}
+      <div className="d-flex flex-wrap gap-3 mb-4">
+        <Link to="/books" className="lib-card p-3 d-flex align-items-center gap-3 text-decoration-none" style={{ minWidth: 180 }}>
+          <div className="stat-icon blue"><i className="bi bi-search"></i></div>
+          <span>Browse Books</span>
+        </Link>
+        <Link to="/fines" className="lib-card p-3 d-flex align-items-center gap-3 text-decoration-none" style={{ minWidth: 180 }}>
+          <div className="stat-icon red"><i className="bi bi-currency-rupee"></i></div>
+          <span>View Fines</span>
+        </Link>
+        {roleLower === 'student' && (
+          <Link to="/request-card" className="lib-card p-3 d-flex align-items-center gap-3 text-decoration-none" style={{ minWidth: 180 }}>
+            <div className="stat-icon gold"><i className="bi bi-credit-card-2-front"></i></div>
+            <span>Request Card</span>
+          </Link>
+        )}
+        {(roleLower === 'librarian' || roleLower === 'admin') && (
+          <Link to="/issues" className="lib-card p-3 d-flex align-items-center gap-3 text-decoration-none" style={{ minWidth: 180 }}>
+            <div className="stat-icon green"><i className="bi bi-journal-check"></i></div>
+            <span>Manage Issues</span>
+          </Link>
+        )}
+      </div>
+
+      {actionMsg && <div className="alert alert-success mb-3">{actionMsg}</div>}
+
+      {/* ── STUDENT VIEW ─────────────────────────────────────── */}
+      {roleLower === 'student' && requests.length > 0 && (
+        <div className="lib-card p-4 mb-4">
+          <h4 className="mb-3"><i className="bi bi-card-list me-2"></i>My Card Requests</h4>
           <div className="table-responsive">
             <table className="lib-table">
               <thead>
                 <tr>
-                  <th>Book Name</th>
-                  <th>Type</th>
-                  <th>Date Requested</th>
-                  <th>Status</th>
+                  <th>Book</th><th>Type</th><th>Date</th><th>Status</th><th>Due Date</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map(r => (
                   <tr key={r._id}>
-                    <td>{r.book?.title || 'No Book Selected'}</td>
+                    <td>{r.book?.title || 'N/A'}</td>
                     <td className="text-capitalize">{r.type}</td>
-                    <td>{r?.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
+                    <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
                     <td>
-                      <span className={`badge-role badge-${(r?.status || 'unknown').replace(/_/g, '-')}`}>
-                        {(r?.status || 'unknown').replace(/_/g, ' ')}
+                      <span className={badgeClass(r.status)}>
+                        {statusLabel(r.status)}
                       </span>
+                      {/* Show pickup deadline for approved-pending-pickup */}
+                      {r.status === 'approved_pending_pickup' && r.pickupDeadline && (
+                        <div className="text-warning small mt-1">
+                          ⏰ Collect by {new Date(r.pickupDeadline).toLocaleDateString()}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {r.status === 'issued' && r.dueDate
+                        ? new Date(r.dueDate).toLocaleDateString()
+                        : '—'}
+                    </td>
+                    <td>
+                      {r.status === 'issued' ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-lib-secondary"
+                          onClick={() => handleReturnCard(r._id)}
+                        >
+                          Return book
+                        </button>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -331,65 +304,205 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Requests Table for Librarian/Admin */}
-      {(roleLower === "admin" || roleLower === "librarian") && (
-        <div className="mt-5 lib-card p-4">
-          <h4 className="mb-4">
-            <i className="bi bi-card-checklist me-2"></i>
-            {roleLower === "admin" ? "Final Card Approvals" : "Pending Applications"}
-          </h4>
-          {actionMsg && (
-            <div className="alert alert-success mb-3">{actionMsg}</div>
-          )}
+      {/* Student: Active issued books */}
+      {roleLower === 'student' && activeIssues.length > 0 && (
+        <div className="lib-card p-4 mb-4">
+          <h4 className="mb-3"><i className="bi bi-journal-check me-2"></i>Issued Books</h4>
           <div className="table-responsive">
             <table className="lib-table">
               <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Book Name</th>
-                  <th>Type</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
+                <tr><th>Book</th><th>Type</th><th>Due Date</th><th>Status</th></tr>
               </thead>
               <tbody>
-                {requests.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center text-muted py-4">No requests found</td></tr>
-                ) : (
-                  requests.filter(r => {
-                    if (roleLower === "librarian") return r?.status === "pending";
-                    if (roleLower === "admin") return r?.status === "approved_by_librarian";
-                    return false;
-                  }).map((r) => (
-                    <tr key={r._id}>
-                      <td>{r.student?.name || 'N/A'}</td>
-                      <td>{r.book?.title || 'No Book Selected'}</td>
-                      <td><span className="badge bg-light text-dark text-capitalize">{r.type}</span></td>
-                      <td>{r?.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
+                {activeIssues.map((r, idx) => {
+                  const overdue = !!r.isOverdue;
+                  return (
+                    <tr key={r._id || idx}>
+                      <td>{r.book?.title || 'N/A'}</td>
+                      <td className="text-capitalize">{r.issueType || 'N/A'}</td>
+                      <td>{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : 'N/A'}</td>
                       <td>
-                        <span className={`badge-role badge-${(r?.status || 'unknown').replace(/_/g, '-')}`}>
-                          {(r?.status || 'unknown').replace(/_/g, ' ')}
+                        <span className={`badge-role badge-${overdue ? 'rejected' : 'approved'}`}>
+                          {overdue ? 'Overdue' : 'Active'}
                         </span>
                       </td>
-                      <td>
-                        <button className="btn btn-sm btn-lib-primary me-2" onClick={() => handleApprove(r._id)}>
-                          <i className="bi bi-check2"></i> Approve
-                        </button>
-                        {roleLower === "librarian" && (
-                          <button className="btn btn-sm btn-lib-secondary" onClick={() => handleReject(r._id)}>
-                            <i className="bi bi-x-lg"></i> Reject
-                          </button>
-                        )}
-                      </td>
                     </tr>
-                  ))
-                )}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
+
+      {/* ── STAFF VIEW (Librarian / Admin) ─────────────────── */}
+      {(roleLower === 'librarian' || roleLower === 'admin') && (
+        <div className="lib-card p-4 mt-2">
+          <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <h4 className="mb-0">
+              <i className="bi bi-card-checklist me-2"></i>Card Request Management
+            </h4>
+            {/* Run expiry manually */}
+            <button className="btn btn-sm btn-lib-secondary" onClick={handleRunExpire}>
+              <i className="bi bi-clock-history me-1"></i>Run Expiry Check
+            </button>
+          </div>
+
+          {/* ── 1. Pending Approval ── */}
+          {pendingForReview.length > 0 && (
+            <div className="mb-4">
+              <h6 className="text-muted mb-2">
+                <i className="bi bi-hourglass-split me-1"></i>
+                Pending Approval ({pendingForReview.length})
+              </h6>
+              <div className="table-responsive">
+                <table className="lib-table">
+                  <thead>
+                    <tr>
+                      <th>Student</th><th>Book</th><th>Type</th>
+                      <th>Date</th><th>Status</th><th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingForReview.map(r => (
+                      <tr key={r._id}>
+                        <td>{r.student?.name || 'N/A'}</td>
+                        <td>{r.book?.title || 'N/A'}</td>
+                        <td><span className="badge bg-light text-dark text-capitalize">{r.type}</span></td>
+                        <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
+                        <td><span className="badge-role badge-pending">Pending</span></td>
+                        <td>
+                          <button className="btn btn-sm btn-lib-primary me-2"
+                            onClick={() => handleApprove(r._id)}>
+                            <i className="bi bi-check2"></i> Approve
+                          </button>
+                          <button className="btn btn-sm btn-lib-secondary"
+                            onClick={() => handleReject(r._id)}>
+                            <i className="bi bi-x-lg"></i> Reject
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── 2. Awaiting Pickup ── */}
+          {awaitingPickup.length > 0 && (
+            <div className="mb-4">
+              <h6 className="text-muted mb-2">
+                <i className="bi bi-box-seam me-1"></i>
+                Awaiting Pickup — Verify Student ID, then click "Mark as Collected" ({awaitingPickup.length})
+              </h6>
+              <div className="table-responsive">
+                <table className="lib-table">
+                  <thead>
+                    <tr>
+                      <th>Student</th><th>Book</th><th>Type</th>
+                      <th>Pickup Deadline</th><th>Status</th><th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {awaitingPickup.map(r => {
+                      const deadline  = r.pickupDeadline ? new Date(r.pickupDeadline) : null;
+                      const isExpired = deadline && new Date() > deadline;
+                      return (
+                        <tr key={r._id}>
+                          <td>{r.student?.name || 'N/A'}</td>
+                          <td>{r.book?.title || 'N/A'}</td>
+                          <td className="text-capitalize">{r.type}</td>
+                          <td>
+                            {deadline ? (
+                              <span className={isExpired ? 'text-danger' : 'text-warning'}>
+                                {deadline.toLocaleDateString()}
+                                {isExpired ? ' ⚠️ Overdue!' : ''}
+                              </span>
+                            ) : '—'}
+                          </td>
+                          <td>
+                            <span className="badge-role badge-approved-pending-pickup">
+                              Ready for Pickup
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-lib-primary me-2"
+                              onClick={() => handleCollect(r._id)}
+                              disabled={isExpired}
+                              title={isExpired ? 'Deadline passed — run expiry check' : 'Mark as collected after ID verification'}
+                            >
+                              <i className="bi bi-bag-check me-1"></i>
+                              Mark as Collected
+                            </button>
+                            <button className="btn btn-sm btn-lib-secondary"
+                              onClick={() => handleReject(r._id)}>
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {pendingForReview.length === 0 && awaitingPickup.length === 0 && (
+            <p className="text-muted text-center py-3">
+              <i className="bi bi-check-circle me-2"></i>No requests need action right now.
+            </p>
+          )}
+
+          {/* ── All requests history ── */}
+          {requests.length > 0 && (
+            <div className="mt-4">
+              <h5 className="mb-3">All Card Requests</h5>
+              <div className="table-responsive">
+                <table className="lib-table">
+                  <thead>
+                    <tr><th>Student</th><th>Book</th><th>Type</th><th>Status</th><th>Due Date</th><th>Date</th><th>Action</th></tr>
+                  </thead>
+                  <tbody>
+                    {requests.map(r => (
+                      <tr key={r._id}>
+                        <td>{r.student?.name || 'N/A'}</td>
+                        <td>{r.book?.title || 'N/A'}</td>
+                        <td className="text-capitalize">{r.type}</td>
+                        <td>
+                          <span className={badgeClass(r.status)}>
+                            {statusLabel(r.status)}
+                          </span>
+                        </td>
+                        <td>
+                          {r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '—'}
+                        </td>
+                        <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
+                        <td>
+                          {r.status === 'issued' ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-lib-primary"
+                              onClick={() => handleReturnCard(r._id)}
+                            >
+                              Return book
+                            </button>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 };

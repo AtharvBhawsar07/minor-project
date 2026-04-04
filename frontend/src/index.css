@@ -113,7 +113,23 @@ a:hover { color: var(--accent-soft); }
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: 1.2rem 1.5rem;
 }
-.lib-card-header h5 { margin: 0; color: #fff; font-family: var(--font-display); }
+.lib-card-header h5,
+.lib-card-header h6 {
+  margin: 0;
+  color: #fff !important;   /* Force white — overrides global h1-h6 rule */
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+/* book-title helper class — use on titles in white/light card bodies */
+.book-title {
+  color: #1a1a2e !important; /* Always visible dark text on light background */
+  font-weight: 600;
+  font-size: 14px;
+  display: block;            /* Ensure it's never hidden */
+  opacity: 1 !important;     /* Override any accidental opacity:0 */
+  visibility: visible !important;
+}
 
 /* ── Buttons ───────────────────────────────────────────────── */
 .btn-lib-primary {
@@ -218,13 +234,22 @@ a:hover { color: var(--accent-soft); }
   font-weight: 600;
   letter-spacing: .04em;
 }
-.badge-student   { background: rgba(6,214,160,.15); color: #059669; }
+.badge-student   { background: rgba(6,214,160,.15);  color: #059669; }
 .badge-librarian { background: rgba(240,165,0,.15);  color: #b45309; }
 .badge-admin     { background: rgba(233,69,96,.15);  color: #be185d; }
 .badge-pending   { background: rgba(107,114,128,.12); color: #4b5563; }
+/* approved_pending_pickup — orange: student must come collect */
+.badge-approved-pending-pickup { background: rgba(234,88,12,.15); color: #c2410c; }
+/* issued — teal-green: book is in student's hands */
+.badge-issued    { background: rgba(6,214,160,.15);  color: #059669; }
 .badge-approved  { background: rgba(6,214,160,.15);  color: #059669; }
 .badge-paid      { background: rgba(6,214,160,.15);  color: #059669; }
+.badge-rejected  { background: rgba(233,69,96,.15);  color: #dc2626; }
 .badge-unpaid    { background: rgba(233,69,96,.15);  color: #dc2626; }
+.badge-suspended { background: rgba(240,165,0,.15);  color: #b45309; }
+.badge-expired   { background: rgba(107,114,128,.12); color: #4b5563; }
+.badge-returned  { background: rgba(99,102,241,.12);  color: #4f46e5; } /* indigo: done/closed */
+.badge-waived    { background: rgba(99,102,241,.15);  color: #6366f1; }
 
 /* ── Hero gradient ─────────────────────────────────────────── */
 .hero-gradient {

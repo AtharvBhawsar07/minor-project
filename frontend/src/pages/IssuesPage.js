@@ -1,31 +1,28 @@
-import React, { useEffect, useMemo, useState } from 'react';
+// src/pages/IssuesPage.js
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { issuesAPI } from '../services/api';
-import { ensureArray, normalizeAPIResponse, normalizeStatus } from '../utils/apiHelpers';
 
 const IssuesPage = () => {
   const { currentUser } = useAuth();
-  const role = currentUser?.role; // "Student" | "Librarian" | "Admin"
-  const roleLower = (role || '').toString().trim().toLowerCase();
+  const roleLower = (currentUser?.role || '').toLowerCase();
 
-  const [issues, setIssues] = useState([]);
+  const [issues,  setIssues]  = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error,   setError]   = useState('');
 
-  const activeIssues = useMemo(() => {
-    const list = ensureArray(issues);
-    return list.filter((r) => r && r.status === 'issued' && !r.returnDate);
-  }, [issues]);
-
+  // ── Fetch all issues (filtered by role on the backend) ────
   const fetchIssues = async () => {
     setLoading(true);
     setError('');
     try {
       const res = await issuesAPI.getAll();
-      setIssues(ensureArray(normalizeAPIResponse(res)));
+      // Safe extraction
+      const raw = res?.data?.data || res?.data || [];
+      setIssues(Array.isArray(raw) ? raw : []);
     } catch (err) {
-      console.error('IssuesPage fetch error:', err);
-      setError(err?.message ?? 'Failed to load issues.');
+      console.error('IssuesPage error:', err);
+      setError(err?.message || 'Failed to load issues.');
       setIssues([]);
     } finally {
       setLoading(false);
@@ -33,74 +30,64 @@ const IssuesPage = () => {
   };
 
   useEffect(() => {
-    if (role) fetchIssues();
-  }, [role]);
+    if (currentUser?.role) fetchIssues();
+  }, [currentUser?.role]); // eslint-disable-line
 
+  // ── Only show active (not returned) issues ────────────────
+  const activeIssues = issues.filter(r => r.status === 'issued' && !r.returnDate);
+
+  // ── Return book handler ───────────────────────────────────
   const handleReturn = async (issueId) => {
-    const conditionRaw = prompt(
-      'Condition at return (good / fair / poor / damaged):',
-      'good'
-    );
-    const condition = (conditionRaw || 'good').trim().toLowerCase();
+    const condition = (window.prompt('Book condition (good / fair / poor / damaged):', 'good') || 'good').trim().toLowerCase();
     if (!['good', 'fair', 'poor', 'damaged'].includes(condition)) {
-      alert('Invalid condition. Use: good, fair, poor, damaged.');
+      alert('Invalid condition value.');
       return;
     }
-
-    const notes = prompt('Notes (optional):', '') || undefined;
-
     try {
-      await issuesAPI.returnBook({ issueRecordId: issueId, condition, notes });
-      // Refresh list to reflect returned items
+      await issuesAPI.returnBook({ issueRecordId: issueId, condition });
+      // refresh
       await fetchIssues();
     } catch (err) {
-      alert(err?.message ?? 'Return failed.');
+      alert(err?.message || 'Return failed.');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="text-center py-5">
-        <div className="spinner-border text-primary"></div>
-        <p className="mt-2 text-muted">Loading issues...</p>
-      </div>
-    );
-  }
+  // ── Loading / Error screens ───────────────────────────────
+  if (loading) return (
+    <div className="text-center py-5">
+      <div className="spinner-border text-primary"></div>
+      <p className="mt-2 text-muted">Loading issues…</p>
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div className="text-center py-5">
-        <div className="alert alert-danger">
-          <i className="bi bi-exclamation-triangle me-2"></i>
-          {error}
-        </div>
-        <button className="btn btn-lib-primary mt-2" onClick={fetchIssues}>
-          Retry
-        </button>
-      </div>
-    );
-  }
+  if (error) return (
+    <div className="text-center py-5">
+      <div className="alert alert-danger">{error}</div>
+      <button className="btn btn-lib-primary mt-2" onClick={fetchIssues}>Retry</button>
+    </div>
+  );
 
   return (
     <div className="page-wrapper">
       <div className="container">
+
+        {/* Header */}
         <div className="mb-4">
           <h2 className="section-title">
-            <i className="bi bi-list-check me-2" />
-            Issues & Returns
+            <i className="bi bi-list-check me-2"></i>Issues & Returns
           </h2>
           <p className="text-muted" style={{ fontSize: '.9rem' }}>
             {roleLower === 'student'
-              ? 'Return your issued books and track fines.'
-              : 'Return books from issued records.'}
+              ? 'Track your issued books and return them here.'
+              : 'Manage all book issue records.'}
           </p>
         </div>
 
+        {/* Active Issues Table */}
         <div className="lib-card">
           <div className="lib-card-header">
             <h5>
-              <i className="bi bi-table me-2" />
-              Active Issues
+              <i className="bi bi-table me-2"></i>Active Issues
               <span className="text-muted ms-2" style={{ fontSize: '.8rem', fontWeight: 400 }}>
                 ({activeIssues.length} item{activeIssues.length !== 1 ? 's' : ''})
               </span>
@@ -114,6 +101,7 @@ const IssuesPage = () => {
                   <th>#</th>
                   {roleLower !== 'student' && <th>Student</th>}
                   <th>Book</th>
+                  <th>Type</th>
                   <th>Issue Date</th>
                   <th>Due Date</th>
                   <th>Status</th>
@@ -123,51 +111,42 @@ const IssuesPage = () => {
               <tbody>
                 {activeIssues.length === 0 ? (
                   <tr>
-                    <td colSpan={roleLower !== 'student' ? 7 : 6} className="text-center text-muted py-4">
-                      <div>
-                        <i className="bi bi-journal-x text-muted" style={{ fontSize: '1.5rem' }}></i>
-                        <p className="mb-0 mt-2">No active issues found.</p>
-                        <small className="text-muted">
-                          {roleLower === 'student' ? 'Issue some books from the Books page to see them here.' : 'No books are currently issued.'}
-                        </small>
-                      </div>
+                    <td colSpan={roleLower !== 'student' ? 8 : 7}
+                      className="text-center text-muted py-5">
+                      <i className="bi bi-journal-x" style={{ fontSize: '2rem' }}></i>
+                      <p className="mb-0 mt-2">No active issues found.</p>
                     </td>
                   </tr>
                 ) : (
                   activeIssues.map((r, idx) => {
-                    const status = normalizeStatus(r.status);
-                    const issueType = (r?.issueType || '').toString().toLowerCase();
-                    const today = new Date();
-                    const sem = r?.semesterEndDate ? new Date(r.semesterEndDate) : (r?.dueDate ? new Date(r.dueDate) : null);
-                    const grace = r?.graceUntil ? new Date(r.graceUntil) : (sem ? new Date(new Date(sem).setDate(sem.getDate() + 5)) : null);
-                    const inGrace = issueType === 'permanent' && sem && grace && today > sem && today <= grace;
-                    const isOverdue = !!r?.isOverdue;
-
-                    const label = isOverdue ? 'Overdue' : inGrace ? 'Grace Period' : 'Active';
-                    const badge = isOverdue ? 'danger' : inGrace ? 'info' : 'approved';
+                    const overdue = !!r.isOverdue;
                     return (
-                      <tr key={r._id ?? idx}>
+                      <tr key={r._id || idx}>
                         <td>{idx + 1}</td>
                         {roleLower !== 'student' && (
-                          <td>{r.student?.name ?? 'N/A'}</td>
+                          <td>{r.student?.name || 'N/A'}</td>
                         )}
-                        <td>{r.book?.title ?? 'N/A'}</td>
+                        <td>{r.book?.title || 'N/A'}</td>
+                        <td className="text-capitalize">{r.issueType || 'N/A'}</td>
                         <td>
-                          {r.issueDate ? new Date(r.issueDate).toLocaleDateString() : 'N/A'}
+                          {r.createdAt
+                            ? new Date(r.createdAt).toLocaleDateString()
+                            : 'N/A'}
                         </td>
                         <td>
-                          {r.dueDate ? new Date(r.dueDate).toLocaleDateString() : 'N/A'}
+                          {r.dueDate
+                            ? new Date(r.dueDate).toLocaleDateString()
+                            : 'N/A'}
                         </td>
                         <td>
-                          <span className={`badge-role badge-${badge}`}>
-                            {label}
+                          <span className={`badge-role badge-${overdue ? 'rejected' : 'approved'}`}>
+                            {overdue ? 'Overdue' : 'Active'}
                           </span>
                         </td>
                         <td>
                           <button
                             className="btn btn-sm btn-lib-secondary"
-                            onClick={() => handleReturn(r._id)}
-                          >
+                            onClick={() => handleReturn(r._id)}>
                             Return
                           </button>
                         </td>
@@ -179,10 +158,47 @@ const IssuesPage = () => {
             </table>
           </div>
         </div>
+
+        {/* All issues summary for staff */}
+        {roleLower !== 'student' && issues.length > activeIssues.length && (
+          <div className="lib-card mt-4">
+            <div className="lib-card-header">
+              <h5><i className="bi bi-archive me-2"></i>Returned Books</h5>
+            </div>
+            <div className="table-responsive">
+              <table className="lib-table">
+                <thead>
+                  <tr>
+                    <th>#</th><th>Student</th><th>Book</th>
+                    <th>Issue Date</th><th>Return Date</th><th>Fine</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {issues
+                    .filter(r => r.status === 'returned' || r.returnDate)
+                    .map((r, idx) => (
+                      <tr key={r._id || idx}>
+                        <td>{idx + 1}</td>
+                        <td>{r.student?.name || 'N/A'}</td>
+                        <td>{r.book?.title || 'N/A'}</td>
+                        <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
+                        <td>{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '—'}</td>
+                        <td>
+                          {r.fineAmount > 0
+                            ? <span className="text-danger fw-bold">₹{r.fineAmount}</span>
+                            : <span className="text-success">None</span>}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
 };
 
 export default IssuesPage;
-

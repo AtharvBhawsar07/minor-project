@@ -2,19 +2,20 @@ const mongoose = require('mongoose');
 
 const bookSchema = new mongoose.Schema(
   {
-    title: { type: String, required: [true, 'Title is required'], trim: true },
-    author: { type: String, required: [true, 'Author is required'], trim: true },
-    isbn: { type: String, required: [true, 'ISBN is required'], unique: true, trim: true },
-    genre: { type: String, trim: true },
-    description: { type: String, trim: true },
-    coverImage: { type: String },
-    publisher: { type: String, trim: true },
-    publishedYear: { type: Number },
-    totalCopies: { type: Number, required: true, min: 1, default: 1 },
-    availableCopies: { type: Number, min: 0, default: 1 },
-    isActive: { type: Boolean, default: true },
-    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    title:           { type: String, required: [true, 'Title is required'], trim: true },
+    author:          { type: String, required: [true, 'Author is required'], trim: true },
+    // isbn is optional — seed books are identified by title+author
+    isbn:            { type: String, trim: true, sparse: true },
+    semester:        { type: String, trim: true },
+    genre:           { type: String, trim: true },
+    description:     { type: String, trim: true },
+    coverImage:      { type: String },
+    publisher:       { type: String, trim: true },
+    publishedYear:   { type: Number },
+    totalCopies:     { type: Number, required: true, min: 1, default: 5 },
+    availableCopies: { type: Number, min: 0, default: 5 },
+    isActive:        { type: Boolean, default: true },
+    addedBy:         { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );
@@ -26,7 +27,7 @@ bookSchema.methods.decrementAvailable = async function () {
     { $inc: { availableCopies: -1 } },
     { new: true }
   );
-  if (!result) throw new Error('No copies available (race condition caught)');
+  if (!result) throw new Error('No copies available');
   return result;
 };
 
@@ -38,7 +39,7 @@ bookSchema.methods.incrementAvailable = async function () {
   );
 };
 
-bookSchema.index({ title: 'text', author: 'text', isbn: 1 });
-bookSchema.index({ genre: 1, isActive: 1 });
+bookSchema.index({ title: 'text', author: 'text' });
+bookSchema.index({ semester: 1, isActive: 1 });
 
 module.exports = mongoose.model('Book', bookSchema);

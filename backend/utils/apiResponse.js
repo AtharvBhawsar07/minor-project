@@ -62,6 +62,11 @@ class ApiResponse {
   static serverError(res, message = 'Internal Server Error') {
     return res.status(500).json({ success: false, message });
   }
+
+  // Alias — used in auth.js and other places
+  static internalError(res, message = 'Internal Server Error') {
+    return res.status(500).json({ success: false, message });
+  }
 }
 
 module.exports = { ApiResponse, asyncHandler, getPagination };

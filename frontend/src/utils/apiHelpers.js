@@ -1,59 +1,40 @@
 /**
  * apiHelpers.js
- * Centralized utility functions for consistent API response handling and safe data access.
+ * Safe utility functions for consistent API response handling.
  */
 
 /**
- * Normalizes API responses to extract the actual data.
- * Handles multiple response structures:
- * - { success: true, data: [...] }
- * - { success: true, data: { data: [...] } }
- * - { data: [...] }
- * - Direct array/object
+ * Normalizes an axios API response to extract the actual data payload.
+ * Handles:
+ *   { data: { data: [...] } }   ← paginated
+ *   { data: { data: {...} } }   ← single object
+ *   { data: { ... } }           ← direct object/array in data
  */
 export const normalizeAPIResponse = (res) => {
   if (!res) return null;
-  
-  // Handle axios response structure
-  if (res.data) {
-    // Handle { success: true, data: { data: [...] } }
-    if (res.data.success !== undefined && res.data.data !== undefined && typeof res.data.data === 'object') {
-      return res.data.data.data || res.data.data;
-    }
-    // Handle { success: true, data: [...] }
-    if (res.data.success !== undefined && res.data.data !== undefined) {
-      return res.data.data;
-    }
-    // Handle { data: [...] }
-    if (res.data.data !== undefined) {
-      return res.data.data;
-    }
-    // Handle direct data
-    return res.data;
-  }
-  
-  // Handle direct response
-  return res;
+  // Paginated / nested:  res.data.data
+  if (res?.data?.data !== undefined) return res.data.data;
+  // Direct payload:      res.data
+  if (res?.data !== undefined) return res.data;
+  return null;
 };
 
 /**
- * Enhanced normalize function that always returns an array
+ * Normalises a response and always returns an array.
+ * Use this for list endpoints only.
  */
 export const normalizeToArray = (res) => {
-  const data = normalizeAPIResponse(res);
+  const data = res?.data?.data || res?.data || [];
   return Array.isArray(data) ? data : [];
 };
 
 /**
- * Ensures the input is an array, providing a fallback to an empty array.
- * Prevents .map() and .filter() errors.
+ * Ensures value is an array — prevents .map() crashes.
  */
-export const ensureArray = (data) => {
-  return Array.isArray(data) ? data : [];
-};
+export const ensureArray = (data) => (Array.isArray(data) ? data : []);
 
 /**
- * Ensures the input is a valid number, providing a fallback.
+ * Safe number with a fallback.
  */
 export const safeNumber = (val, fallback = 0) => {
   const num = Number(val);
@@ -61,15 +42,15 @@ export const safeNumber = (val, fallback = 0) => {
 };
 
 /**
- * Returns the fine amount regardless of whether the field is "fineAmount" or "amount".
+ * Returns fine amount regardless of field name.
  */
 export const getFineAmount = (fine) => {
   if (!fine) return 0;
-  return safeNumber(fine.fineAmount ?? fine.amount ?? 0);
+  return safeNumber(fine.fineAmount ?? fine.amount ?? fine.calculatedAmount ?? 0);
 };
 
 /**
- * Normalizes status strings for consistent comparisons.
+ * Normalises status strings for consistent comparisons.
  */
 export const normalizeStatus = (status) => {
   if (!status) return '';

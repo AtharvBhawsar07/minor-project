@@ -48,11 +48,16 @@ export const booksAPI = {
   delete: (id) => api.delete(`/books/${id}`)
 };
 export const libraryCardsAPI = { 
-  apply: (data) => api.post('/library-cards/apply', data), 
-  getMyCard: () => api.get('/library-cards/my-card'), 
-  getAll: (params) => api.get('/library-cards', { params }),
-  approve: (id) => api.patch(`/library-cards/${id}/approve`),
-  reject: (id, reason) => api.patch(`/library-cards/${id}/reject`, { reason })
+  apply:     (data) => api.post('/library-cards/apply', data), 
+  getMyCard: ()     => api.get('/library-cards/my-card'), 
+  getAll:    (params) => api.get('/library-cards', { params }),
+  approve:   (id)   => api.patch(`/library-cards/${id}/approve`),
+  reject:    (id, reason) => api.patch(`/library-cards/${id}/reject`, { reason }),
+  // Mark as Collected (librarian/admin action after student physically arrives)
+  collect:   (id)   => api.patch(`/library-cards/${id}/collect`),
+  returnBook: (id)   => api.patch(`/library-cards/${id}/return`),
+  // Run expiry check on all overdue approved-pending-pickup cards
+  runExpire: ()     => api.post('/library-cards/run-expire'),
 };
 export const issuesAPI = { 
   getAll: (params) => api.get('/issues', { params }),
