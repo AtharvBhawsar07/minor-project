@@ -55,12 +55,13 @@ export const libraryCardsAPI = {
   reject:    (id, reason) => api.patch(`/library-cards/${id}/reject`, { reason }),
   // Mark as Collected (librarian/admin action after student physically arrives)
   collect:   (id)   => api.patch(`/library-cards/${id}/collect`),
+  requestReturn: (id) => api.patch(`/library-cards/${id}/request-return`),
   returnBook: (id)   => api.patch(`/library-cards/${id}/return`),
   // Run expiry check on all overdue approved-pending-pickup cards
   runExpire: ()     => api.post('/library-cards/run-expire'),
 };
 export const issuesAPI = { 
-  getAll: (params) => api.get('/issues', { params }),
+  getAll: (params) => api.get('/issues', { params: { limit: 100, ...(params || {}) } }),
   getById: (id) => api.get(`/issues/${id}`),
   issueBook: (data) => api.post('/issues/issue', data), 
   returnBook: (data) => api.post('/issues/return', data),

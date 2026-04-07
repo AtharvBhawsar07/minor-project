@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Book = require('../models/Book');
+const User = require('../models/User');
 const { protect, authorize } = require('../middlewares/auth');
 const { ApiResponse, asyncHandler } = require('../utils/apiResponse');
 const LibraryCard = require('../models/LibraryCard');
@@ -10,14 +11,34 @@ router.get('/', protect, asyncHandler(async (req, res) => {
   const { search, semester, available } = req.query;
 
   const filter = { isActive: true };
-  if (semester)          filter.semester = semester;
+  const andParts = [];
+
+  if (req.user.role === 'student') {
+    const u = await User.findById(req.user._id).select('semester').lean();
+    if (u?.semester) {
+      const sn = Number(u.semester);
+      andParts.push({
+        $or: [
+          { semester: sn },
+          { semester: null },
+          { semester: { $exists: false } },
+        ],
+      });
+    }
+  } else if (semester != null && semester !== '') {
+    andParts.push({ semester: Number(semester) });
+  }
+
   if (available === 'true') filter.availableCopies = { $gt: 0 };
   if (search) {
-    filter.$or = [
-      { title:  { $regex: search, $options: 'i' } },
-      { author: { $regex: search, $options: 'i' } },
-    ];
+    andParts.push({
+      $or: [
+        { title: { $regex: search, $options: 'i' } },
+        { author: { $regex: search, $options: 'i' } },
+      ],
+    });
   }
+  if (andParts.length) filter.$and = andParts;
 
   const books = await Book.find(filter).sort({ semester: 1, title: 1 }).lean();
   return res.json({ success: true, data: books });
@@ -38,6 +59,13 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
 
 // POST /api/books  — Librarian / Admin only
 router.post('/', protect, authorize('librarian', 'admin'), asyncHandler(async (req, res) => {
+  const sem = req.body.semester != null && req.body.semester !== '' ? Number(req.body.semester) : null;
+  if (sem != null && !Number.isNaN(sem)) {
+    const count = await Book.countDocuments({ semester: sem, isActive: true });
+    if (count >= 5) {
+      return ApiResponse.badRequest(res, 'Maximum 5 books allowed for this semester');
+    }
+  }
   const book = await Book.create({ ...req.body, addedBy: req.user._id });
   return ApiResponse.created(res, { message: 'Book added successfully', data: book });
 }));

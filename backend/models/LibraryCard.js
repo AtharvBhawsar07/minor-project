@@ -16,7 +16,16 @@ const libraryCardSchema = new mongoose.Schema(
       //            approved_pending_pickup → expired (missed 2-day pickup)
       // Only pending/approved_pending_pickup/issued are "active" (block new requests)
       // returned/rejected/expired FREE the card slot for a new request
-      enum: ['pending', 'approved_pending_pickup', 'issued', 'returned', 'rejected', 'suspended', 'expired'],
+      enum: [
+        'pending',
+        'approved_pending_pickup',
+        'issued',
+        'return_requested',
+        'returned',
+        'rejected',
+        'suspended',
+        'expired',
+      ],
       default: 'pending',
     },
     // Card sub-type
@@ -39,6 +48,7 @@ const libraryCardSchema = new mongoose.Schema(
     collectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     collectedAt: { type: Date },
     returnedAt: { type: Date },
+    returnDate: { type: Date },
     // Book issue dates (set when collected)
     issueDate:  { type: Date },
     dueDate:    { type: Date },

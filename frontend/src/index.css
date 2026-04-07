@@ -249,6 +249,7 @@ a:hover { color: var(--accent-soft); }
 .badge-suspended { background: rgba(240,165,0,.15);  color: #b45309; }
 .badge-expired   { background: rgba(107,114,128,.12); color: #4b5563; }
 .badge-returned  { background: rgba(99,102,241,.12);  color: #4f46e5; } /* indigo: done/closed */
+.badge-return-requested { background: rgba(234,179,8,.15); color: #a16207; }
 .badge-waived    { background: rgba(99,102,241,.15);  color: #6366f1; }
 
 /* ── Hero gradient ─────────────────────────────────────────── */

@@ -26,7 +26,30 @@ router.post('/register', validate(schemas.user), asyncHandler(async (req, res) =
     }
   }
 
-  const user = await User.create({ name, email, password, role: role?.toLowerCase() || 'student', studentId, department, phone });
+  const r = role?.toLowerCase() || 'student';
+  if (r === 'admin') {
+    const adminExists = await User.findOne({ role: 'admin' });
+    if (adminExists) return ApiResponse.conflict(res, 'Admin already exists');
+  }
+  if (r === 'librarian') {
+    const librarianExists = await User.findOne({ role: 'librarian' });
+    if (librarianExists) return ApiResponse.conflict(res, 'Librarian already exists');
+  }
+
+  const payload = {
+    name,
+    email,
+    password,
+    role: r,
+    studentId,
+    department,
+    phone,
+  };
+  if (r === 'student' && req.body.semester != null && req.body.semester !== '') {
+    payload.semester = Number(req.body.semester);
+  }
+
+  const user = await User.create(payload);
   logger.info(`User created: ${user._id}`);
   const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 

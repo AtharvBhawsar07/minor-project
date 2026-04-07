@@ -2,16 +2,32 @@ const express = require('express');
 const router = express.Router();
 const LibraryCard = require('../models/LibraryCard');
 const Book = require('../models/Book');
+const IssueRecord = require('../models/IssueRecord');
 const { protect, authorize } = require('../middlewares/auth');
 const { ApiResponse, asyncHandler, getPagination } = require('../utils/apiResponse');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PICKUP_DEADLINE_DAYS = 2;   // Student has 2 days to collect after approval
 const TEMP_ISSUE_DAYS      = 15;  // Temporary: 15 days issue period
-const PERM_ISSUE_DAYS      = 180; // Permanent: ~semester (6 months)
+const PERM_ISSUE_DAYS      = 180; // Fallback if book has no semester
 
-// Active statuses that BLOCK a new request for the same book
-const BLOCKING_STATUSES = ['pending', 'approved_pending_pickup', 'issued'];
+// Active statuses that BLOCK a new request for the same book / count toward 5 slots
+const BLOCKING_STATUSES = [
+  'pending',
+  'approved_pending_pickup',
+  'issued',
+  'return_requested',
+];
+
+// Permanent issue length by book semester (days)
+const permanentDaysForSemester = (sem) => {
+  const s = Number(sem);
+  if (s === 1 || s === 2) return 90;
+  if (s === 3) return 60;
+  if (s === 4) return 45;
+  if (s === 5 || s === 6 || s === 7 || s === 8) return 30;
+  return PERM_ISSUE_DAYS;
+};
 
 // Helper: add N days to a date
 const addDays = (date, n) => {
@@ -75,7 +91,10 @@ router.post('/apply', protect, authorize('student'), asyncHandler(async (req, re
   }
 
   // ── Enforce temporary (max 3) / permanent (max 2) sub-limits ─────────────
-  const issuedCards = existingCards.filter(c => c.status === 'issued');
+  // Count books still out (issued or waiting for librarian to confirm return)
+  const issuedCards = existingCards.filter(c =>
+    ['issued', 'return_requested'].includes(c.status)
+  );
   const tempCount   = issuedCards.filter(c => c.type === 'temporary').length;
   const permCount   = issuedCards.filter(c => c.type === 'permanent').length;
 
@@ -220,8 +239,11 @@ router.patch('/:id/collect', protect, authorize('librarian', 'admin'), asyncHand
     return ApiResponse.badRequest(res, 'Book is no longer available. Cannot issue.');
   }
 
-  const now     = new Date();
-  const issueDays = card.type === 'permanent' ? PERM_ISSUE_DAYS : TEMP_ISSUE_DAYS;
+  const now = new Date();
+  const issueDays =
+    card.type === 'permanent'
+      ? permanentDaysForSemester(card.book.semester)
+      : TEMP_ISSUE_DAYS;
 
   card.status      = 'issued';
   card.issueDate   = now;
@@ -231,6 +253,17 @@ router.patch('/:id/collect', protect, authorize('librarian', 'admin'), asyncHand
   card.collectedBy = req.user._id;
   card.collectedAt = now;
   await card.save();
+
+  await IssueRecord.create({
+    book: card.book._id,
+    student: card.student,
+    libraryCard: card._id,
+    issuedBy: req.user._id,
+    issueDate: now,
+    dueDate: card.dueDate,
+    status: 'issued',
+    issueType: card.type,
+  });
 
   const populated = await LibraryCard.findById(card._id)
     .populate('book', 'title author')
@@ -252,9 +285,22 @@ router.patch('/:id/reject', protect, authorize('librarian', 'admin'), asyncHandl
   const card = await LibraryCard.findById(req.params.id).populate('book');
   if (!card) return ApiResponse.notFound(res, 'Library card not found');
 
-  const rejectableStatuses = ['pending', 'approved_pending_pickup', 'issued'];
+  const rejectableStatuses = ['pending', 'approved_pending_pickup', 'issued', 'return_requested'];
   if (!rejectableStatuses.includes(card.status)) {
     return ApiResponse.badRequest(res, `Cannot reject a card with status: ${card.status}`);
+  }
+
+  // Student asked to return — librarian can cancel that request (book still issued)
+  if (card.status === 'return_requested') {
+    card.status = 'issued';
+    card.rejectionReason = reason || 'Return request cancelled';
+    card.reviewedBy = req.user._id;
+    card.reviewedAt = new Date();
+    await card.save();
+    return ApiResponse.success(res, {
+      message: 'Return request cancelled. Book remains issued.',
+      data: card,
+    });
   }
 
   // Capture BEFORE changing status — only 'issued' cards had copies decremented
@@ -279,29 +325,65 @@ router.patch('/:id/reject', protect, authorize('librarian', 'admin'), asyncHandl
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PATCH /api/library-cards/:id/return
-// issued → returned (frees a card slot; copy was decremented at collect)
-// Student (own card) OR librarian / admin
+// PATCH /api/library-cards/:id/request-return  (Student only)
+// issued → return_requested (librarian must confirm)
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/:id/return', protect, authorize('student', 'librarian', 'admin'), asyncHandler(async (req, res) => {
+router.patch('/:id/request-return', protect, authorize('student'), asyncHandler(async (req, res) => {
+  const card = await LibraryCard.findById(req.params.id);
+  if (!card) return ApiResponse.notFound(res, 'Library card not found');
+
+  if (card.student.toString() !== req.user._id.toString()) {
+    return ApiResponse.forbidden(res, 'Not your request');
+  }
+  if (card.status !== 'issued') {
+    return ApiResponse.badRequest(
+      res,
+      `You can only request return for issued books. Current status: ${card.status}`
+    );
+  }
+
+  card.status = 'return_requested';
+  await card.save();
+
+  return ApiResponse.success(res, {
+    message: 'Return requested. A librarian will verify and mark the book as returned.',
+    data: card,
+  });
+}));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/library-cards/:id/return
+// return_requested → returned (librarian/admin only). Frees slot; restores copy.
+// ─────────────────────────────────────────────────────────────────────────────
+router.patch('/:id/return', protect, authorize('librarian', 'admin'), asyncHandler(async (req, res) => {
   const card = await LibraryCard.findById(req.params.id).populate('book');
   if (!card) return ApiResponse.notFound(res, 'Library card not found');
 
-  if (req.user.role === 'student' && card.student.toString() !== req.user._id.toString()) {
-    return ApiResponse.forbidden(res, 'You can only return your own books');
+  if (card.status !== 'return_requested') {
+    return ApiResponse.badRequest(
+      res,
+      `Mark as returned is only allowed after the student requests return. Current: ${card.status}`
+    );
   }
 
-  if (card.status !== 'issued') {
-    return ApiResponse.badRequest(res, `Only issued books can be returned. Current status: ${card.status}`);
-  }
-
+  const now = new Date();
   card.status = 'returned';
-  card.returnedAt = new Date();
+  card.returnedAt = now;
+  card.returnDate = now;
   await card.save();
 
   if (card.book) {
     await Book.findByIdAndUpdate(card.book._id, { $inc: { availableCopies: 1 } });
   }
+
+  await IssueRecord.findOneAndUpdate(
+    { libraryCard: card._id, status: 'issued' },
+    {
+      status: 'returned',
+      returnDate: now,
+      returnedTo: req.user._id,
+    }
+  );
 
   return ApiResponse.success(res, {
     message: 'Book returned. Card slot is now free for a new request.',

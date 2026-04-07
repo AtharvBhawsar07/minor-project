@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema(
     studentId: { type: String, unique: true, sparse: true, trim: true },
     department: { type: String, trim: true },
     phone: { type: String, trim: true },
+    // Semester 1–8 (students only; used to filter books catalogue)
+    semester: { type: Number, min: 1, max: 8 },
     isActive: { type: Boolean, default: true },
     refreshToken: { type: String, select: false },
   },

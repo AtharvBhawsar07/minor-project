@@ -12,6 +12,7 @@ const schemas = {
     studentId:  Joi.string().trim().optional().allow(''),
     department: Joi.string().trim().optional().allow(''),
     phone:      Joi.string().trim().optional().allow(''),
+    semester:   Joi.number().integer().min(1).max(8).optional(),
   }),
 
   // Login — accepts role in any case (Student/student etc.)

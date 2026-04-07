@@ -6,7 +6,7 @@ const bookSchema = new mongoose.Schema(
     author:          { type: String, required: [true, 'Author is required'], trim: true },
     // isbn is optional — seed books are identified by title+author
     isbn:            { type: String, trim: true, sparse: true },
-    semester:        { type: String, trim: true },
+    semester:        { type: Number, min: 1, max: 8 },
     genre:           { type: String, trim: true },
     description:     { type: String, trim: true },
     coverImage:      { type: String },

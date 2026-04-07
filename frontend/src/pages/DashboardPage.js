@@ -16,6 +16,7 @@ const statusLabel = (status = '') => {
     pending:                  'Pending Review',
     approved_pending_pickup:  'Ready for Pickup 📦',
     issued:                   'Issued ✅',
+    return_requested:         'Return requested ⏳',
     returned:                 '↩ Returned',   // slot is now free
     rejected:                 'Rejected',
     expired:                  'Expired',
@@ -75,7 +76,7 @@ const DashboardPage = () => {
   const totalUnpaid    = unpaidFines.reduce((s, f) => s + (f.amount || f.calculatedAmount || 0), 0);
 
   // Active card slots: pending + approved_pending_pickup + issued (NOT returned/rejected/expired)
-  const ACTIVE_CARD_STATUSES = ['pending', 'approved_pending_pickup', 'issued'];
+  const ACTIVE_CARD_STATUSES = ['pending', 'approved_pending_pickup', 'issued', 'return_requested'];
   const activeCardCount = requests.filter(c => ACTIVE_CARD_STATUSES.includes(c?.status)).length;
   const cardUsage  = `${activeCardCount}/5`;
 
@@ -95,14 +96,13 @@ const DashboardPage = () => {
 
   // ── Staff action: Reject ──────────────────────────────────
   const handleReject = async (id) => {
-    const reason = window.prompt('Enter rejection reason:');
+    const reason = window.prompt('Enter rejection reason (or note for cancelling return request):');
     if (!reason) return;
     try {
       await libraryCardsAPI.reject(id, reason);
-      setRequests(prev => prev.map(r =>
-        r._id === id ? { ...r, status: 'rejected' } : r
-      ));
-      setActionMsg('Card rejected.');
+      const cardsRes = await libraryCardsAPI.getAll();
+      setRequests(safeList(cardsRes));
+      setActionMsg('Updated.');
       setTimeout(() => setActionMsg(''), 4000);
     } catch (err) {
       alert('❌ ' + (err.message || 'Rejection failed'));
@@ -122,6 +122,10 @@ const DashboardPage = () => {
       setRequests(prev => prev.map(r =>
         r._id === id ? { ...r, status: 'issued', dueDate: updatedCard.dueDate } : r
       ));
+      try {
+        const issuesRes = await issuesAPI.getAll();
+        setIssues(safeList(issuesRes));
+      } catch (_) { /* ignore */ }
       setActionMsg(`✅ Book issued! Due: ${updatedCard.dueDate ? new Date(updatedCard.dueDate).toLocaleDateString() : 'N/A'}`);
       setTimeout(() => setActionMsg(''), 6000);
     } catch (err) {
@@ -144,14 +148,30 @@ const DashboardPage = () => {
     }
   };
 
-  // Return book → status returned, frees one of 5 card slots
-  const handleReturnCard = async (id) => {
-    const ok = window.confirm('Confirm the book was returned? This unlocks one card slot.');
+  // Student: ask librarian to verify return
+  const handleRequestReturn = async (id) => {
+    try {
+      await libraryCardsAPI.requestReturn(id);
+      setRequests((prev) => prev.map((r) => (r._id === id ? { ...r, status: 'return_requested' } : r)));
+      setActionMsg('Return requested. Librarian will confirm when the book is received.');
+      setTimeout(() => setActionMsg(''), 6000);
+    } catch (err) {
+      alert('❌ ' + (err.message || 'Could not submit return request'));
+    }
+  };
+
+  // Librarian/Admin: confirm physical return
+  const handleConfirmReturn = async (id) => {
+    const ok = window.confirm('Confirm the book was received at the library?');
     if (!ok) return;
     try {
       await libraryCardsAPI.returnBook(id);
       setRequests((prev) => prev.map((r) => (r._id === id ? { ...r, status: 'returned' } : r)));
-      setActionMsg('Book returned. Card slot unlocked.');
+      try {
+        const issuesRes = await issuesAPI.getAll();
+        setIssues(safeList(issuesRes));
+      } catch (_) { /* ignore */ }
+      setActionMsg('Marked as returned. Card slot unlocked.');
       setTimeout(() => setActionMsg(''), 5000);
     } catch (err) {
       alert('❌ ' + (err.message || 'Return failed'));
@@ -168,6 +188,7 @@ const DashboardPage = () => {
   // ── Staff: requests needing action ───────────────────────
   const pendingForReview  = requests.filter(r => r.status === 'pending');
   const awaitingPickup    = requests.filter(r => r.status === 'approved_pending_pickup');
+  const returnRequests    = requests.filter(r => r.status === 'return_requested');
 
   return (
     <div className="container mt-4 pb-5">
@@ -216,7 +237,7 @@ const DashboardPage = () => {
             <div className="stat-card">
               <div className="stat-icon gold"><i className="bi bi-card-checklist"></i></div>
               <div>
-                <div className="stat-value">{pendingForReview.length + awaitingPickup.length}</div>
+                <div className="stat-value">{pendingForReview.length + awaitingPickup.length + returnRequests.length}</div>
                 <div className="stat-label">Needs Action</div>
               </div>
             </div>
@@ -279,7 +300,7 @@ const DashboardPage = () => {
                       )}
                     </td>
                     <td>
-                      {r.status === 'issued' && r.dueDate
+                      {(r.status === 'issued' || r.status === 'return_requested') && r.dueDate
                         ? new Date(r.dueDate).toLocaleDateString()
                         : '—'}
                     </td>
@@ -288,10 +309,12 @@ const DashboardPage = () => {
                         <button
                           type="button"
                           className="btn btn-sm btn-lib-secondary"
-                          onClick={() => handleReturnCard(r._id)}
+                          onClick={() => handleRequestReturn(r._id)}
                         >
-                          Return book
+                          Request return
                         </button>
+                      ) : r.status === 'return_requested' ? (
+                        <span className="text-muted small">Waiting for librarian</span>
                       ) : (
                         '—'
                       )}
@@ -450,7 +473,52 @@ const DashboardPage = () => {
             </div>
           )}
 
-          {pendingForReview.length === 0 && awaitingPickup.length === 0 && (
+          {/* ── 3. Return requests (student asked; librarian confirms) ── */}
+          {returnRequests.length > 0 && (
+            <div className="mb-4">
+              <h6 className="text-muted mb-2">
+                <i className="bi bi-arrow-return-left me-1"></i>
+                Return requests ({returnRequests.length})
+              </h6>
+              <div className="table-responsive">
+                <table className="lib-table">
+                  <thead>
+                    <tr>
+                      <th>Student</th><th>Book</th><th>Type</th><th>Due</th><th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {returnRequests.map((r) => (
+                      <tr key={r._id}>
+                        <td>{r.student?.name || 'N/A'}</td>
+                        <td>{r.book?.title || 'N/A'}</td>
+                        <td className="text-capitalize">{r.type}</td>
+                        <td>{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '—'}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-lib-primary me-2"
+                            onClick={() => handleConfirmReturn(r._id)}
+                          >
+                            Mark as returned
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-lib-secondary"
+                            onClick={() => handleReject(r._id)}
+                          >
+                            Cancel request
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {pendingForReview.length === 0 && awaitingPickup.length === 0 && returnRequests.length === 0 && (
             <p className="text-muted text-center py-3">
               <i className="bi bi-check-circle me-2"></i>No requests need action right now.
             </p>
@@ -481,13 +549,13 @@ const DashboardPage = () => {
                         </td>
                         <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
                         <td>
-                          {r.status === 'issued' ? (
+                          {r.status === 'return_requested' ? (
                             <button
                               type="button"
                               className="btn btn-sm btn-lib-primary"
-                              onClick={() => handleReturnCard(r._id)}
+                              onClick={() => handleConfirmReturn(r._id)}
                             >
-                              Return book
+                              Mark as returned
                             </button>
                           ) : (
                             '—'
@@ -502,6 +570,47 @@ const DashboardPage = () => {
           )}
         </div>
       )}
+
+      {/* Issue & return history (IssueRecord rows created when librarian marks collected) */}
+      <div className="lib-card p-4 mb-4">
+        <h4 className="mb-3"><i className="bi bi-clock-history me-2"></i>Issue &amp; return history</h4>
+        {issues.length === 0 ? (
+          <p className="text-muted mb-0">
+            No issue records yet. History is added when a book is marked as collected at the library.
+          </p>
+        ) : (
+          <div className="table-responsive">
+            <table className="lib-table">
+              <thead>
+                <tr>
+                  {roleLower !== 'student' && <th>Student</th>}
+                  <th>Book</th>
+                  <th>Issue date</th>
+                  <th>Due date</th>
+                  <th>Return date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {issues.map((row, i) => (
+                  <tr key={row._id || i}>
+                    {roleLower !== 'student' && <td>{row.student?.name || 'N/A'}</td>}
+                    <td>{row.book?.title || 'N/A'}</td>
+                    <td>{row.issueDate ? new Date(row.issueDate).toLocaleDateString() : '—'}</td>
+                    <td>{row.dueDate ? new Date(row.dueDate).toLocaleDateString() : '—'}</td>
+                    <td>{row.returnDate ? new Date(row.returnDate).toLocaleDateString() : '—'}</td>
+                    <td>
+                      <span className={`badge-role badge-${row.status === 'returned' ? 'returned' : 'issued'}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
     </div>
   );

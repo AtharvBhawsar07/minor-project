@@ -1790,3 +1790,219 @@
 [2026-04-05 00:23:40] INFO: Login attempt for: Admin01
 [2026-04-05 00:23:41] INFO: Login successful: Admin01
 [2026-04-05 00:28:52] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-05 12:51:29] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-05 12:51:29] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-05 12:55:17] INFO: Login attempt for: om12@gmail.com
+[2026-04-05 12:55:17] INFO: Login successful: om12@gmail.com
+[2026-04-05 12:55:42] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-05 13:54:15] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-05 13:54:15] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-05 13:55:16] INFO: Registration attempt: Admin02@gmail.com
+[2026-04-05 13:55:26] INFO: Registration attempt: Admin02@gmail.com
+[2026-04-05 13:55:31] INFO: Registration attempt: Admin02@gmail.com
+[2026-04-05 13:55:32] INFO: Registration attempt: Admin02@gmail.com
+[2026-04-05 13:55:56] INFO: Login attempt for: om12@gmail.com
+[2026-04-05 13:55:57] INFO: Login successful: om12@gmail.com
+[2026-04-05 13:56:57] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-05 13:56:58] INFO: Login successful: pawan12@gmail.com
+[2026-04-05 14:03:59] INFO: Login attempt for: om12@gmail.com
+[2026-04-05 14:04:00] INFO: Login successful: om12@gmail.com
+[2026-04-05 14:04:37] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-05 14:04:38] INFO: Login successful: pawan12@gmail.com
+[2026-04-05 14:05:43] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-05 23:37:22] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-05 23:37:23] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-05 23:37:59] INFO: Login attempt for: 0425cs231014
+[2026-04-05 23:37:59] INFO: Login successful: 0425cs231014
+[2026-04-05 23:39:34] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-05 23:39:34] INFO: Login successful: pawan12@gmail.com
+[2026-04-05 23:40:23] INFO: Login attempt for: om12@gmail.com
+[2026-04-05 23:40:24] INFO: Login successful: om12@gmail.com
+[2026-04-05 23:40:34] INFO: Login attempt for: 0425cs231014
+[2026-04-05 23:40:35] INFO: Login successful: 0425cs231014
+[2026-04-05 23:41:00] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-05 23:41:01] INFO: Login successful: pawan12@gmail.com
+[2026-04-05 23:42:01] INFO: Login attempt for: Admin01
+[2026-04-05 23:42:01] INFO: Login successful: Admin01
+[2026-04-05 23:42:54] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-06 14:27:05] ERROR: MongoDB connect failed (attempt 1/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:27:05] INFO: Retrying MongoDB connection in 1582ms...
+[2026-04-06 14:27:14] ERROR: MongoDB connect failed (attempt 2/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:27:14] INFO: Retrying MongoDB connection in 3224ms...
+[2026-04-06 14:27:26] ERROR: MongoDB connect failed (attempt 3/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:27:26] INFO: Retrying MongoDB connection in 6332ms...
+[2026-04-06 14:27:40] ERROR: MongoDB connect failed (attempt 4/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:27:40] INFO: Retrying MongoDB connection in 12645ms...
+[2026-04-06 14:28:55] ERROR: MongoDB connect failed (attempt 1/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:28:55] INFO: Retrying MongoDB connection in 1639ms...
+[2026-04-06 14:29:05] ERROR: MongoDB connect failed (attempt 2/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:29:05] INFO: Retrying MongoDB connection in 3215ms...
+[2026-04-06 14:29:16] ERROR: MongoDB connect failed (attempt 3/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:29:16] INFO: Retrying MongoDB connection in 6229ms...
+[2026-04-06 14:29:31] ERROR: MongoDB connect failed (attempt 4/5): Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+[2026-04-06 14:29:31] INFO: Retrying MongoDB connection in 13131ms...
+[2026-04-06 14:30:58] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-06 14:31:12] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-06 14:32:00] INFO: Login attempt for: 0425cs231014
+[2026-04-06 14:32:01] WARN: Login failed - role mismatch. Expected: student, Got: Librarian
+[2026-04-06 14:32:07] INFO: Login attempt for: 0425cs231014
+[2026-04-06 14:32:09] INFO: Login successful: 0425cs231014
+[2026-04-06 14:34:54] INFO: MongoDB reconnected
+[2026-04-06 14:35:22] ERROR: 500 - connection <monitor> to 159.41.226.174:27017 timed out - /api/auth/logout - POST - ::1
+[2026-04-06 14:35:36] WARN: MongoDB disconnected
+[2026-04-06 14:35:44] INFO: MongoDB reconnected
+[2026-04-06 14:39:24] INFO: Login attempt for: om12@gmail.com
+[2026-04-06 14:39:26] INFO: Login successful: om12@gmail.com
+[2026-04-06 14:41:21] INFO: Login attempt for: om12@gmail.com
+[2026-04-06 14:41:21] WARN: Login failed - role mismatch. Expected: student, Got: Librarian
+[2026-04-06 14:41:25] INFO: Login attempt for: om12@gmail.com
+[2026-04-06 14:41:26] INFO: Login successful: om12@gmail.com
+[2026-04-06 14:41:50] WARN: MongoDB disconnected
+[2026-04-06 14:41:50] INFO: MongoDB reconnected
+[2026-04-06 14:42:17] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-06 14:42:18] INFO: Login successful: pawan12@gmail.com
+[2026-04-06 17:22:50] INFO: MongoDB reconnected
+[2026-04-06 17:23:08] INFO: Login attempt for: 0425cs231014
+[2026-04-06 17:23:09] INFO: Login successful: 0425cs231014
+[2026-04-06 17:37:44] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-07 13:51:22] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-07 13:51:22] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-07 13:52:08] INFO: Login attempt for: 0425cs231014
+[2026-04-07 13:52:09] INFO: Login successful: 0425cs231014
+[2026-04-07 13:53:11] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-07 18:10:08] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-07 18:10:09] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-07 18:10:51] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-07 18:10:56] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-07 18:10:57] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-07 18:11:31] INFO: Login attempt for: 0425cs231014
+[2026-04-07 18:11:31] INFO: Login successful: 0425cs231014
+[2026-04-07 18:12:25] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-07 18:12:26] INFO: Login successful: pawan12@gmail.com
+[2026-04-07 18:13:06] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-07 18:45:21] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-07 18:45:22] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-07 18:45:38] INFO: Login attempt for: 0425cs231014
+[2026-04-07 18:45:38] INFO: Login successful: 0425cs231014
+[2026-04-07 18:47:03] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-07 18:47:03] INFO: Login successful: pawan12@gmail.com
+[2026-04-07 18:51:44] INFO: Login attempt for: 0425cs231014
+[2026-04-07 18:51:45] INFO: Login successful: 0425cs231014
+[2026-04-07 18:52:21] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-07 18:52:27] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-07 18:52:28] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-07 18:52:51] INFO: Login attempt for: 0425cs231014
+[2026-04-07 18:52:51] INFO: Login successful: 0425cs231014
+[2026-04-07 18:53:31] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-07 18:53:31] INFO: Login successful: pawan12@gmail.com
+[2026-04-07 18:54:51] INFO: Login attempt for: 0425cs231014
+[2026-04-07 18:54:52] INFO: Login successful: 0425cs231014
+[2026-04-07 18:55:23] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-07 18:55:24] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-07 18:55:58] INFO: Login attempt for: 0425cs231014
+[2026-04-07 18:55:58] INFO: Login successful: 0425cs231014
+[2026-04-07 18:56:40] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-07 18:56:40] INFO: Login successful: pawan12@gmail.com
+[2026-04-07 18:57:25] INFO: Login attempt for: 0425cs231014
+[2026-04-07 18:57:25] INFO: Login successful: 0425cs231014
+[2026-04-07 19:35:31] INFO: SIGINT received. Starting graceful shutdown...

@@ -12,7 +12,7 @@ const User        = require('../models/User');
 const { ApiResponse, asyncHandler } = require('../utils/apiResponse');
 
 const FINE_PER_DAY   = 5;   // ₹5 per overdue day
-const TEMP_DAYS      = 15;  // Temporary issue duration
+const TEMP_DAYS      = 1;  // Temporary issue duration
 const PERM_DAYS      = 180; // Permanent issue duration (~semester)
 const MAX_BOOKS      = 5;   // Max books per student
 const MAX_TEMP       = 3;   // Max temporary books

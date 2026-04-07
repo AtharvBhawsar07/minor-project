@@ -14,7 +14,7 @@ const RegisterPage = () => {
 
   const [form, setForm] = useState({
     name: '', email: '', phone: '', role: 'Student',
-    enrollmentNo: '', employeeId: '', password: '', confirmPassword: '',
+    enrollmentNo: '', employeeId: '', semester: '', password: '', confirmPassword: '',
   });
   const [errors, setErrors]     = useState({});
   const [success, setSuccess]   = useState('');
@@ -46,6 +46,13 @@ const RegisterPage = () => {
     if (form.role === 'Student' && !form.enrollmentNo.trim())
       errs.enrollmentNo = 'Enrollment number is required for students.';
 
+    if (form.role === 'Student') {
+      const s = Number(form.semester);
+      if (!form.semester || Number.isNaN(s) || s < 1 || s > 8) {
+        errs.semester = 'Select your semester (1–8).';
+      }
+    }
+
     if (['Librarian', 'Admin'].includes(form.role) && !form.employeeId.trim())
       errs.employeeId = 'Employee ID is required.';
 
@@ -73,6 +80,7 @@ const RegisterPage = () => {
         phone: form.phone,
         role: form.role.toLowerCase(), // API expects lowercase role
         studentId: form.role === 'Student' ? form.enrollmentNo : form.employeeId,
+        semester: form.role === 'Student' ? Number(form.semester) : undefined,
         password: form.password
       });
       if (result.success) {
@@ -90,7 +98,7 @@ const RegisterPage = () => {
 
   // ── Reset ────────────────────────────────────────────────
   const handleReset = () => {
-    setForm({ name: '', email: '', phone: '', role: 'Student', enrollmentNo: '', employeeId: '', password: '', confirmPassword: '' });
+    setForm({ name: '', email: '', phone: '', role: 'Student', enrollmentNo: '', employeeId: '', semester: '', password: '', confirmPassword: '' });
     setErrors({});
     setSuccess('');
   };
@@ -157,6 +165,23 @@ const RegisterPage = () => {
                   className={`form-control lib-form-control ${errors.enrollmentNo ? 'is-invalid' : ''}`}
                   placeholder="e.g. CS2021001" />
                 {errors.enrollmentNo && <div className="invalid-feedback">{errors.enrollmentNo}</div>}
+              </div>
+            )}
+            {form.role === 'Student' && (
+              <div className="col-12">
+                <label className="lib-label">Semester (1–8) *</label>
+                <select
+                  name="semester"
+                  value={form.semester}
+                  onChange={handleChange}
+                  className={`form-select lib-form-control ${errors.semester ? 'is-invalid' : ''}`}
+                >
+                  <option value="">Select semester</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <option key={n} value={String(n)}>Semester {n}</option>
+                  ))}
+                </select>
+                {errors.semester && <div className="invalid-feedback">{errors.semester}</div>}
               </div>
             )}
             {['Librarian', 'Admin'].includes(form.role) && (
