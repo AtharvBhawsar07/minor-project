@@ -30,6 +30,8 @@ const issueRecordSchema = new mongoose.Schema(
       atReturn: { type: String, enum: ['good', 'fair', 'poor', 'damaged'] },
     },
     notes: { type: String, trim: true },
+    reminderSent2Days: { type: Boolean, default: false },
+    reminderSent1Day: { type: Boolean, default: false },
   },
   {
     timestamps: true,

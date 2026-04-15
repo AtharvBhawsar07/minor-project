@@ -1,5 +1,5 @@
 // src/pages/BooksPage.js — real API, matches app styling (Bootstrap + lib-*)
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { booksAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,9 @@ const BooksPage = () => {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [semester, setSemester] = useState('All');
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
+  const fileInputRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -70,6 +73,25 @@ const BooksPage = () => {
     }
   };
 
+  const handleUploadBooks = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadMessage('');
+    try {
+      const res = await booksAPI.upload(file);
+      const message = res?.data?.message || 'Books uploaded successfully';
+      setUploadMessage(message);
+      await load();
+    } catch (e) {
+      setUploadMessage(e?.message || 'Book upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-5">
@@ -101,7 +123,32 @@ const BooksPage = () => {
             </h2>
             <p className="text-muted mb-0 small">{books.length} title(s) in library</p>
           </div>
+          {(roleLower === 'librarian' || roleLower === 'admin') && (
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="d-none"
+                onChange={handleUploadBooks}
+              />
+              <button
+                type="button"
+                className="btn btn-lib-primary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading...' : 'Upload Books'}
+              </button>
+            </div>
+          )}
         </div>
+
+        {uploadMessage && (
+          <div className={`alert ${uploadMessage.toLowerCase().includes('fail') || uploadMessage.toLowerCase().includes('error') ? 'alert-danger' : 'alert-success'}`}>
+            {uploadMessage}
+          </div>
+        )}
 
         <div className="lib-card p-3 mb-4">
           <div className="row g-3 align-items-end">

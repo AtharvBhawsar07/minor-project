@@ -44,6 +44,13 @@ export const booksAPI = {
   getAll: (params) => api.get('/books', { params }),
   getById: (id) => api.get(`/books/${id}`),
   create: (data) => api.post('/books', data),
+  upload: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/books/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   update: (id, data) => api.put(`/books/${id}`, data),
   delete: (id) => api.delete(`/books/${id}`)
 };
@@ -72,6 +79,7 @@ export const finesAPI = {
   getMyFines: () => api.get('/fines/my-fines'),
   getById: (id) => api.get(`/fines/${id}`),
   pay: (id, data) => api.patch(`/fines/${id}/pay`, data),
+  markPaid: (id, amount) => api.patch(`/fines/${id}/pay`, { amount, paymentMethod: 'upi' }),
   waive: (id, reason) => api.patch(`/fines/${id}/waive`, { reason }),
   sendReminders: () => api.post('/fines/send-reminders')
 };

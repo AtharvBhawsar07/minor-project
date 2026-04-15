@@ -35,6 +35,9 @@ const IssuesPage = () => {
 
   // ── Only show active (not returned) issues ────────────────
   const activeIssues = issues.filter(r => r.status === 'issued' && !r.returnDate);
+  const issueHistory = issues
+    .filter((r) => r.status === 'issued' || r.status === 'returned' || r.returnDate)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   // ── Return book handler ───────────────────────────────────
   const handleReturn = async (issueId) => {
@@ -159,42 +162,50 @@ const IssuesPage = () => {
           </div>
         </div>
 
-        {/* All issues summary for staff */}
-        {roleLower !== 'student' && issues.length > activeIssues.length && (
-          <div className="lib-card mt-4">
-            <div className="lib-card-header">
-              <h5><i className="bi bi-archive me-2"></i>Returned Books</h5>
-            </div>
-            <div className="table-responsive">
-              <table className="lib-table">
-                <thead>
-                  <tr>
-                    <th>#</th><th>Student</th><th>Book</th>
-                    <th>Issue Date</th><th>Return Date</th><th>Fine</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {issues
-                    .filter(r => r.status === 'returned' || r.returnDate)
-                    .map((r, idx) => (
-                      <tr key={r._id || idx}>
-                        <td>{idx + 1}</td>
-                        <td>{r.student?.name || 'N/A'}</td>
-                        <td>{r.book?.title || 'N/A'}</td>
-                        <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
-                        <td>{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '—'}</td>
-                        <td>
-                          {r.fineAmount > 0
-                            ? <span className="text-danger fw-bold">₹{r.fineAmount}</span>
-                            : <span className="text-success">None</span>}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+        {/* Issue + Return history */}
+        <div className="lib-card mt-4">
+          <div className="lib-card-header">
+            <h5><i className="bi bi-clock-history me-2"></i>Issue & Return History</h5>
           </div>
-        )}
+          <div className="table-responsive">
+            <table className="lib-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  {roleLower !== 'student' && <th>Student</th>}
+                  <th>Book Title</th>
+                  <th>Issue Date</th>
+                  <th>Return Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {issueHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan={roleLower !== 'student' ? 6 : 5} className="text-center text-muted py-4">
+                      No issue/return history found.
+                    </td>
+                  </tr>
+                ) : (
+                  issueHistory.map((r, idx) => (
+                    <tr key={r._id || idx}>
+                      <td>{idx + 1}</td>
+                      {roleLower !== 'student' && <td>{r.student?.name || 'N/A'}</td>}
+                      <td>{r.book?.title || 'N/A'}</td>
+                      <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</td>
+                      <td>{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '—'}</td>
+                      <td>
+                        <span className={`badge-role badge-${(r.status || '').toLowerCase() === 'returned' ? 'approved' : 'pending'}`}>
+                          {(r.status || 'issued').toLowerCase() === 'returned' ? 'returned' : 'issued'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
       </div>
     </div>

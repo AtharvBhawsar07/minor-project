@@ -20,6 +20,7 @@ const xss = require('xss-clean');
 const { connectDB, disconnectDB } = require('./config/database');
 const logger = require('./utils/logger');
 const { errorHandler, notFoundHandler } = require('./middlewares/errorHandler');
+const { processDueDateReminders } = require('./utils/dueDateReminderJob');
 
 // ─── Route Imports ────────────────────────────────────────────────────────────
 const authRoutes = require('./routes/auth');
@@ -129,6 +130,12 @@ const startServer = async () => {
       }
     } catch (idxErr) {
       logger.warn(`Library card index cleanup: ${idxErr?.message || idxErr}`);
+    }
+    // Run due reminders once on startup (no fixed cron time).
+    try {
+      await processDueDateReminders();
+    } catch (reminderErr) {
+      logger.warn(`Due-date reminder startup run failed: ${reminderErr?.message || reminderErr}`);
     }
   } catch (err) {
     logger.error(`Startup aborted: could not connect to MongoDB. ${err?.message || err}`);

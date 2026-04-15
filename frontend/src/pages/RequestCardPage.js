@@ -174,6 +174,17 @@ const RequestCardPage = () => {
                 Dashboard
               </Link>
             </div>
+
+            <div className="mt-3">
+              <p className="text-muted small mb-1 fw-semibold">Before you request:</p>
+              <ol className="text-muted small ps-3 mb-0">
+                <li>First, submit a book request.</li>
+                <li>Your request will be reviewed and approved by the librarian.</li>
+                <li>After approval, you need to collect the book within 2 days.</li>
+                <li>While collecting, bring your college ID card.</li>
+                <li>The librarian will verify and give you the book.</li>
+              </ol>
+            </div>
           </form>
         </div>
 

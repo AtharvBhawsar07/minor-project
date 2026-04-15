@@ -5,6 +5,7 @@ const Book = require('../models/Book');
 const IssueRecord = require('../models/IssueRecord');
 const Fine = require('../models/Fine');
 const LibraryCard = require('../models/LibraryCard');
+const { processDueDateReminders } = require('../utils/dueDateReminderJob');
 const { protect, authorize } = require('../middlewares/auth');
 const { ApiResponse, asyncHandler, getPagination } = require('../utils/apiResponse');
 
@@ -89,6 +90,15 @@ router.get('/activity', protect, authorize('librarian', 'admin'), asyncHandler(a
       .lean(),
   ]);
   return ApiResponse.success(res, { data: { recentIssues, recentReturns, recentFines } });
+}));
+
+// POST /api/admin/run-due-reminders
+router.post('/run-due-reminders', protect, authorize('librarian', 'admin'), asyncHandler(async (_req, res) => {
+  const result = await processDueDateReminders();
+  return ApiResponse.success(res, {
+    message: 'Due-date reminders processed successfully',
+    data: result,
+  });
 }));
 
 module.exports = router;

@@ -2,6 +2,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { finesAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { QRCodeSVG } from 'qrcode.react';
+
+const UPI_ID = process.env.REACT_APP_COLLEGE_UPI_ID || 'college@upi';
+const UPI_NAME = process.env.REACT_APP_COLLEGE_UPI_NAME || 'College';
 
 const FinesPage = () => {
   const { currentUser } = useAuth();
@@ -99,7 +103,7 @@ const FinesPage = () => {
     setPayingId(id);
     const fine = fines.find(f => f._id === id);
     try {
-      await finesAPI.pay(id, { amount: fine?.calculatedFine || fine?.amount || 0, paymentMethod: 'cash' });
+      await finesAPI.markPaid(id, fine?.calculatedFine || fine?.amount || 0);
       setFines(prev => prev.map(f => f._id === id ? { ...f, status: 'paid' } : f));
     } catch (err) {
       alert(err?.message || 'Could not mark fine as paid.');
@@ -122,6 +126,9 @@ const FinesPage = () => {
       <button className="btn btn-lib-primary mt-2" onClick={fetchFines}>Retry</button>
     </div>
   );
+
+  const buildUpiLink = (amount) =>
+    `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(UPI_NAME)}&am=${encodeURIComponent(amount || 0)}`;
 
   return (
     <div className="page-wrapper">
@@ -207,13 +214,14 @@ const FinesPage = () => {
                   <th>Overdue Days</th>
                   <th>Per Book Fine (₹5/day)</th>
                   <th>Status</th>
-                  {roleLower !== 'student' && <th>Action</th>}
+                  {roleLower === 'student' && <th>Pay with UPI</th>}
+                  {(roleLower === 'librarian' || roleLower === 'admin') && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={roleLower !== 'student' ? 9 : 7}
+                    <td colSpan={roleLower === 'student' ? 8 : 9}
                       className="text-center text-muted py-4">
                       No fine records found.
                     </td>
@@ -252,15 +260,30 @@ const FinesPage = () => {
                           {f.status}
                         </span>
                       </td>
-                      {roleLower !== 'student' && (
+                      {roleLower === 'student' && (
                         <td>
-                          {f.status === 'pending' && (
+                          {(f.status === 'pending' || f.status === 'partial') ? (
+                            <div className="d-flex flex-column align-items-start gap-2">
+                              <div className="small fw-semibold">
+                                Amount: ₹{f.calculatedFine || f.amount || 0}
+                              </div>
+                              <QRCodeSVG value={buildUpiLink(f.calculatedFine || f.amount || 0)} size={90} />
+                              <small className="text-muted">Scan to pay ({UPI_ID})</small>
+                            </div>
+                          ) : (
+                            <span className="text-muted small">—</span>
+                          )}
+                        </td>
+                      )}
+                      {(roleLower === 'librarian' || roleLower === 'admin') && (
+                        <td>
+                          {(f.status === 'pending' || f.status === 'partial') && (
                             <button className="btn btn-sm btn-lib-primary"
                               onClick={() => handleMarkPaid(f._id)}
                               disabled={payingId === f._id}>
                               {payingId === f._id
                                 ? <span className="spinner-border spinner-border-sm"></span>
-                                : 'Mark Paid'}
+                                : 'Mark as Paid'}
                             </button>
                           )}
                           {f.status === 'paid' && (

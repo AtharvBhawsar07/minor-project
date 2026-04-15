@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api', // Maps to backend
+  baseURL: 'http://localhost:5000/api' || 'https://minor-project-4rrb.onrender.com/api', // Maps to backend
 });
 
 api.interceptors.request.use((config) => {

@@ -17,14 +17,14 @@ const createTransporter = () => {
   });
 };
 
-const send = async ({ to, subject, html }) => {
+const send = async ({ to, subject, html, from }) => {
   if (!process.env.EMAIL_USER) {
     logger.warn('Email not configured — skipping send');
     return;
   }
   const transporter = createTransporter();
   const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM || 'Digital Library <noreply@digitallibrary.com>',
+    from: from || process.env.EMAIL_FROM || 'Digital Library <noreply@digitallibrary.com>',
     to,
     subject,
     html,
@@ -73,6 +73,22 @@ const emailService = {
         <h2>Library Fine Reminder</h2>
         <p>Dear ${student.name},</p>
         <p>You have a pending fine of <strong>₹${fine.amount}</strong>. Please pay at the library counter.</p>
+        <br><p>Digital Library System</p>
+      `,
+    });
+  },
+
+  sendDueDateReminder: async (student, daysLeft, fromEmail) => {
+    const dueMessage = daysLeft === 2
+      ? 'Your book is due in 2 days. Please return it on time.'
+      : 'Your book is due tomorrow. Please return it to avoid fine.';
+    await send({
+      to: student.email,
+      subject: 'Library Reminder',
+      from: fromEmail,
+      html: `
+        <p>Dear Student,</p>
+        <p>${dueMessage}</p>
         <br><p>Digital Library System</p>
       `,
     });

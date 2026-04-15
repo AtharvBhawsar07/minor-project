@@ -74,6 +74,27 @@ const DashboardPage = () => {
   const activeIssues   = issues.filter(i => i.status === 'issued' && !i.returnDate);
   const unpaidFines    = fines.filter(f => ['pending', 'partial'].includes((f.status || '').toLowerCase()));
   const totalUnpaid    = unpaidFines.reduce((s, f) => s + (f.amount || f.calculatedAmount || 0), 0);
+  const dueNotifications = roleLower === 'student'
+    ? activeIssues
+        .map((issue) => {
+          if (!issue?.dueDate) return null;
+          const today = new Date();
+          const dueDate = new Date(issue.dueDate);
+          const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const dueStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+          const daysLeft = Math.round((dueStart - todayStart) / 86400000);
+          if (daysLeft === 2 || daysLeft === 1) {
+            return {
+              id: issue._id,
+              title: issue?.book?.title || 'Book',
+              message: `${daysLeft} day${daysLeft > 1 ? 's' : ''} left before due date`,
+              dueDate: dueDate.toLocaleDateString(),
+            };
+          }
+          return null;
+        })
+        .filter(Boolean)
+    : [];
 
   // Active card slots: pending + approved_pending_pickup + issued (NOT returned/rejected/expired)
   const ACTIVE_CARD_STATUSES = ['pending', 'approved_pending_pickup', 'issued', 'return_requested'];
@@ -271,6 +292,19 @@ const DashboardPage = () => {
 
       {actionMsg && <div className="alert alert-success mb-3">{actionMsg}</div>}
 
+      {roleLower === 'student' && dueNotifications.length > 0 && (
+        <div className="lib-card p-4 mb-4">
+          <h4 className="mb-3"><i className="bi bi-bell me-2"></i>Due Date Notifications</h4>
+          <div className="d-flex flex-column gap-2">
+            {dueNotifications.map((note) => (
+              <div key={note.id} className="alert alert-warning mb-0">
+                <strong>{note.title}:</strong> {note.message} (Due: {note.dueDate})
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── STUDENT VIEW ─────────────────────────────────────── */}
       {roleLower === 'student' && requests.length > 0 && (
         <div className="lib-card p-4 mb-4">
@@ -327,36 +361,6 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Student: Active issued books */}
-      {roleLower === 'student' && activeIssues.length > 0 && (
-        <div className="lib-card p-4 mb-4">
-          <h4 className="mb-3"><i className="bi bi-journal-check me-2"></i>Issued Books</h4>
-          <div className="table-responsive">
-            <table className="lib-table">
-              <thead>
-                <tr><th>Book</th><th>Type</th><th>Due Date</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {activeIssues.map((r, idx) => {
-                  const overdue = !!r.isOverdue;
-                  return (
-                    <tr key={r._id || idx}>
-                      <td>{r.book?.title || 'N/A'}</td>
-                      <td className="text-capitalize">{r.issueType || 'N/A'}</td>
-                      <td>{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : 'N/A'}</td>
-                      <td>
-                        <span className={`badge-role badge-${overdue ? 'rejected' : 'approved'}`}>
-                          {overdue ? 'Overdue' : 'Active'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* ── STAFF VIEW (Librarian / Admin) ─────────────────── */}
       {(roleLower === 'librarian' || roleLower === 'admin') && (
@@ -570,47 +574,6 @@ const DashboardPage = () => {
           )}
         </div>
       )}
-
-      {/* Issue & return history (IssueRecord rows created when librarian marks collected) */}
-      <div className="lib-card p-4 mb-4">
-        <h4 className="mb-3"><i className="bi bi-clock-history me-2"></i>Issue &amp; return history</h4>
-        {issues.length === 0 ? (
-          <p className="text-muted mb-0">
-            No issue records yet. History is added when a book is marked as collected at the library.
-          </p>
-        ) : (
-          <div className="table-responsive">
-            <table className="lib-table">
-              <thead>
-                <tr>
-                  {roleLower !== 'student' && <th>Student</th>}
-                  <th>Book</th>
-                  <th>Issue date</th>
-                  <th>Due date</th>
-                  <th>Return date</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {issues.map((row, i) => (
-                  <tr key={row._id || i}>
-                    {roleLower !== 'student' && <td>{row.student?.name || 'N/A'}</td>}
-                    <td>{row.book?.title || 'N/A'}</td>
-                    <td>{row.issueDate ? new Date(row.issueDate).toLocaleDateString() : '—'}</td>
-                    <td>{row.dueDate ? new Date(row.dueDate).toLocaleDateString() : '—'}</td>
-                    <td>{row.returnDate ? new Date(row.returnDate).toLocaleDateString() : '—'}</td>
-                    <td>
-                      <span className={`badge-role badge-${row.status === 'returned' ? 'returned' : 'issued'}`}>
-                        {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
     </div>
   );
