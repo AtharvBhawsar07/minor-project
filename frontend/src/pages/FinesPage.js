@@ -4,8 +4,8 @@ import { finesAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 
-const UPI_ID = process.env.REACT_APP_COLLEGE_UPI_ID || 'college@upi';
-const UPI_NAME = process.env.REACT_APP_COLLEGE_UPI_NAME || 'College';
+const UPI_ID = process.env.REACT_APP_COLLEGE_UPI_ID || 'bhawsaratharv5@oksbi';
+const UPI_NAME = process.env.REACT_APP_COLLEGE_UPI_NAME || 'AtharvBhawsar';
 
 const FinesPage = () => {
   const { currentUser } = useAuth();
