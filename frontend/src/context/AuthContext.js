@@ -59,11 +59,17 @@ const buildUser = (raw) => {
   };
 };
 
+// ── Inactivity timeout: 30 minutes ──────────────────────────
+const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
+
 // ─────────────────────────────────────────────────────────────
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError,   setAuthError]   = useState(null);
+
+  // Keep a ref to the inactivity timer so we can reset it easily
+  const inactivityTimer = React.useRef(null);
 
   // ── Restore session on mount ─────────────────────────────
   const checkSession = useCallback(async () => {
@@ -92,6 +98,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // ── Inactivity auto-logout ───────────────────────────────
+  // Start a timer; reset it on any mouse or keyboard event.
+  // If 30 minutes pass with no activity → auto logout.
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    inactivityTimer.current = setTimeout(() => {
+      localStorage.removeItem('accessToken');
+      setCurrentUser(null);
+      alert('You have been logged out due to 30 minutes of inactivity.');
+    }, INACTIVITY_MS);
+  }, []);
+
   useEffect(() => {
     checkSession();
 
@@ -100,8 +118,21 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(null);
     };
     window.addEventListener('auth:logout', handleLogout);
-    return () => window.removeEventListener('auth:logout', handleLogout);
-  }, [checkSession]);
+
+    // Start the inactivity timer and reset it on user activity
+    resetInactivityTimer();
+    window.addEventListener('mousemove', resetInactivityTimer);
+    window.addEventListener('keydown',   resetInactivityTimer);
+    window.addEventListener('click',     resetInactivityTimer);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout);
+      window.removeEventListener('mousemove', resetInactivityTimer);
+      window.removeEventListener('keydown',   resetInactivityTimer);
+      window.removeEventListener('click',     resetInactivityTimer);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
+  }, [checkSession, resetInactivityTimer]);
 
   // ── Login ─────────────────────────────────────────────────
   const login = async (payload) => {
@@ -151,6 +182,8 @@ export const AuthProvider = ({ children }) => {
 
   // ── Logout ────────────────────────────────────────────────
   const logout = async () => {
+    // Clear the inactivity timer when logging out manually
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     try { await authAPI.logout(); } catch (_) { /* ignore */ }
     localStorage.removeItem('accessToken');
     setCurrentUser(null);

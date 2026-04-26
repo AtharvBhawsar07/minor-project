@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: [true, 'Password is required'], minlength: 6, select: false },
     role: { type: String, enum: ['student', 'librarian', 'admin'], default: 'student' },
+    gender: { type: String, enum: ['Male', 'Female'], default: 'Male' },
     studentId: { type: String, unique: true, sparse: true, trim: true },
     department: { type: String, trim: true },
     phone: { type: String, trim: true },

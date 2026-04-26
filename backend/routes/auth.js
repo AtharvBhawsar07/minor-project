@@ -9,7 +9,7 @@ const logger = require('../utils/logger');
 
 // POST /api/auth/register
 router.post('/register', validate(schemas.user), asyncHandler(async (req, res) => {
-  const { name, email, password, role, studentId, department, phone } = req.body;
+  const { name, email, password, role, studentId, department, phone, gender } = req.body;
   logger.info(`Registration attempt: ${email}`, { name, email, role, studentId });
 
   const existingEmail = await User.findOne({ email });
@@ -32,8 +32,8 @@ router.post('/register', validate(schemas.user), asyncHandler(async (req, res) =
     if (adminExists) return ApiResponse.conflict(res, 'Admin already exists');
   }
   if (r === 'librarian') {
-    const librarianExists = await User.findOne({ role: 'librarian' });
-    if (librarianExists) return ApiResponse.conflict(res, 'Librarian already exists');
+    const librarianCount = await User.countDocuments({ role: 'librarian' });
+    if (librarianCount >= 2) return ApiResponse.conflict(res, 'Librarian limit reached');
   }
 
   const payload = {
@@ -44,6 +44,7 @@ router.post('/register', validate(schemas.user), asyncHandler(async (req, res) =
     studentId,
     department,
     phone,
+    gender: gender || 'Male',
   };
   if (r === 'student' && req.body.semester != null && req.body.semester !== '') {
     payload.semester = Number(req.body.semester);

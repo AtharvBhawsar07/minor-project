@@ -1,5 +1,5 @@
 // src/pages/DashboardPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { booksAPI, finesAPI, libraryCardsAPI, issuesAPI } from '../services/api';
@@ -34,40 +34,50 @@ const DashboardPage = () => {
   const role      = currentUser?.role || '';
   const roleLower = role.toLowerCase();
 
-  const [loading,   setLoading]   = useState(true);
-  const [books,     setBooks]     = useState([]);
-  const [fines,     setFines]     = useState([]);
-  const [requests,  setRequests]  = useState([]);
-  const [issues,    setIssues]    = useState([]);
-  const [actionMsg, setActionMsg] = useState('');
+  const [loading,    setLoading]    = useState(true);
+  const [books,      setBooks]      = useState([]);
+  const [fines,      setFines]      = useState([]);
+  const [requests,   setRequests]   = useState([]);
+  const [issues,     setIssues]     = useState([]);
+  const [actionMsg,  setActionMsg]  = useState('');
+  const [actionBusy, setActionBusy] = useState(false); // prevents double-clicking
 
   // ── Load all data ─────────────────────────────────────────
+  // Extracted as useCallback so it can be called from both
+  // the initial useEffect and the 30-second polling interval.
+  const fetchData = useCallback(async () => {
+    if (!role) return;
+    try {
+      const [booksRes, finesRes, cardsRes, issuesRes] = await Promise.allSettled([
+        booksAPI.getAll(),
+        roleLower === 'student' ? finesAPI.getMyFines() : finesAPI.getAll(),
+        libraryCardsAPI.getAll(),
+        issuesAPI.getAll(),
+      ]);
+
+      setBooks(   booksRes.status  === 'fulfilled' ? safeList(booksRes.value)  : []);
+      setFines(   finesRes.status  === 'fulfilled' ? safeList(finesRes.value)  : []);
+      setRequests(cardsRes.status  === 'fulfilled' ? safeList(cardsRes.value)  : []);
+      setIssues(  issuesRes.status === 'fulfilled' ? safeList(issuesRes.value) : []);
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+    }
+  }, [role, roleLower]); // eslint-disable-line
+
+  // Initial load + 30-second auto-refresh
   useEffect(() => {
     if (!role) return;
 
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [booksRes, finesRes, cardsRes, issuesRes] = await Promise.allSettled([
-          booksAPI.getAll(),
-          roleLower === 'student' ? finesAPI.getMyFines() : finesAPI.getAll(),
-          libraryCardsAPI.getAll(),
-          issuesAPI.getAll(),
-        ]);
+    // First load
+    setLoading(true);
+    fetchData().finally(() => setLoading(false));
 
-        setBooks(    booksRes.status   === 'fulfilled' ? safeList(booksRes.value)  : []);
-        setFines(    finesRes.status   === 'fulfilled' ? safeList(finesRes.value)  : []);
-        setRequests( cardsRes.status   === 'fulfilled' ? safeList(cardsRes.value)  : []);
-        setIssues(   issuesRes.status  === 'fulfilled' ? safeList(issuesRes.value) : []);
-      } catch (err) {
-        console.error('Dashboard load error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Poll every 30 seconds to keep data fresh for all users
+    const interval = setInterval(fetchData, 30000);
 
-    load();
-  }, [role]); // eslint-disable-line
+    // Stop polling when the component is unmounted
+    return () => clearInterval(interval);
+  }, [fetchData, role]);
 
   // ── Derived stats ─────────────────────────────────────────
   const availableBooks = books.filter(b => (b.availableCopies || 0) > 0).length;
@@ -103,15 +113,23 @@ const DashboardPage = () => {
 
   // ── Staff action: Approve ─────────────────────────────────
   const handleApprove = async (id) => {
+    if (actionBusy) return; // prevent double-click
+    setActionBusy(true);
     try {
       await libraryCardsAPI.approve(id);
-      setRequests(prev => prev.map(r =>
-        r._id === id ? { ...r, status: 'approved_pending_pickup' } : r
-      ));
       setActionMsg('✅ Card approved! Student can now come for pickup.');
       setTimeout(() => setActionMsg(''), 5000);
     } catch (err) {
-      alert('❌ ' + (err.message || 'Approval failed'));
+      // 409 = another user already approved it — show friendly message
+      const msg = err.statusCode === 409
+        ? '⚠️ Already approved by another user. Refreshing data...'
+        : '❌ ' + (err.message || 'Approval failed');
+      setActionMsg(msg);
+      setTimeout(() => setActionMsg(''), 6000);
+    } finally {
+      // Always re-fetch from server so all users see the latest status
+      await fetchData();
+      setActionBusy(false);
     }
   };
 
@@ -119,14 +137,18 @@ const DashboardPage = () => {
   const handleReject = async (id) => {
     const reason = window.prompt('Enter rejection reason (or note for cancelling return request):');
     if (!reason) return;
+    if (actionBusy) return;
+    setActionBusy(true);
     try {
       await libraryCardsAPI.reject(id, reason);
-      const cardsRes = await libraryCardsAPI.getAll();
-      setRequests(safeList(cardsRes));
       setActionMsg('Updated.');
       setTimeout(() => setActionMsg(''), 4000);
     } catch (err) {
-      alert('❌ ' + (err.message || 'Rejection failed'));
+      setActionMsg('❌ ' + (err.message || 'Rejection failed'));
+      setTimeout(() => setActionMsg(''), 5000);
+    } finally {
+      await fetchData();
+      setActionBusy(false);
     }
   };
 
@@ -137,20 +159,20 @@ const DashboardPage = () => {
       'Confirm: Student ID verified. Mark this book as collected and issue it?'
     );
     if (!ok) return;
+    if (actionBusy) return;
+    setActionBusy(true);
     try {
       const res = await libraryCardsAPI.collect(id);
       const updatedCard = res?.data?.data || {};
-      setRequests(prev => prev.map(r =>
-        r._id === id ? { ...r, status: 'issued', dueDate: updatedCard.dueDate } : r
-      ));
-      try {
-        const issuesRes = await issuesAPI.getAll();
-        setIssues(safeList(issuesRes));
-      } catch (_) { /* ignore */ }
       setActionMsg(`✅ Book issued! Due: ${updatedCard.dueDate ? new Date(updatedCard.dueDate).toLocaleDateString() : 'N/A'}`);
       setTimeout(() => setActionMsg(''), 6000);
     } catch (err) {
-      alert('❌ ' + (err.message || 'Could not mark as collected'));
+      setActionMsg('❌ ' + (err.message || 'Could not mark as collected'));
+      setTimeout(() => setActionMsg(''), 5000);
+    } finally {
+      // Re-fetch both cards and issues to keep everything in sync
+      await fetchData();
+      setActionBusy(false);
     }
   };
 
@@ -160,12 +182,12 @@ const DashboardPage = () => {
       const res = await libraryCardsAPI.runExpire();
       const count = res?.data?.data?.expiredCount || 0;
       setActionMsg(`🕐 Expired ${count} overdue pickup request(s).`);
-      // Refresh the list
-      const cardsRes = await libraryCardsAPI.getAll();
-      setRequests(safeList(cardsRes));
       setTimeout(() => setActionMsg(''), 5000);
     } catch (err) {
-      alert('❌ ' + (err.message || 'Expiry check failed'));
+      setActionMsg('❌ ' + (err.message || 'Expiry check failed'));
+      setTimeout(() => setActionMsg(''), 5000);
+    } finally {
+      await fetchData();
     }
   };
 
@@ -173,11 +195,13 @@ const DashboardPage = () => {
   const handleRequestReturn = async (id) => {
     try {
       await libraryCardsAPI.requestReturn(id);
-      setRequests((prev) => prev.map((r) => (r._id === id ? { ...r, status: 'return_requested' } : r)));
       setActionMsg('Return requested. Librarian will confirm when the book is received.');
       setTimeout(() => setActionMsg(''), 6000);
     } catch (err) {
-      alert('❌ ' + (err.message || 'Could not submit return request'));
+      setActionMsg('❌ ' + (err.message || 'Could not submit return request'));
+      setTimeout(() => setActionMsg(''), 5000);
+    } finally {
+      await fetchData();
     }
   };
 
@@ -185,17 +209,18 @@ const DashboardPage = () => {
   const handleConfirmReturn = async (id) => {
     const ok = window.confirm('Confirm the book was received at the library?');
     if (!ok) return;
+    if (actionBusy) return;
+    setActionBusy(true);
     try {
       await libraryCardsAPI.returnBook(id);
-      setRequests((prev) => prev.map((r) => (r._id === id ? { ...r, status: 'returned' } : r)));
-      try {
-        const issuesRes = await issuesAPI.getAll();
-        setIssues(safeList(issuesRes));
-      } catch (_) { /* ignore */ }
       setActionMsg('Marked as returned. Card slot unlocked.');
       setTimeout(() => setActionMsg(''), 5000);
     } catch (err) {
-      alert('❌ ' + (err.message || 'Return failed'));
+      setActionMsg('❌ ' + (err.message || 'Return failed'));
+      setTimeout(() => setActionMsg(''), 5000);
+    } finally {
+      await fetchData();
+      setActionBusy(false);
     }
   };
 
@@ -221,7 +246,7 @@ const DashboardPage = () => {
           <i className="bi bi-person text-white" style={{ fontSize: '1.5rem' }}></i>
         </div>
         <div>
-          <h3 className="mb-0">Hello, {currentUser?.name}!</h3>
+          <h3 className="mb-0">Hello {currentUser?.name}</h3>
           <span className="badge bg-secondary text-capitalize">{role} Dashboard</span>
         </div>
       </div>
@@ -369,10 +394,16 @@ const DashboardPage = () => {
             <h4 className="mb-0">
               <i className="bi bi-card-checklist me-2"></i>Card Request Management
             </h4>
-            {/* Run expiry manually */}
-            <button className="btn btn-sm btn-lib-secondary" onClick={handleRunExpire}>
-              <i className="bi bi-clock-history me-1"></i>Run Expiry Check
-            </button>
+            <div className="d-flex gap-2">
+              {/* Manual refresh button — useful when another user just made a change */}
+              <button className="btn btn-sm btn-lib-secondary" onClick={fetchData} disabled={actionBusy}>
+                <i className="bi bi-arrow-clockwise me-1"></i>Refresh
+              </button>
+              {/* Run expiry check on pickup deadlines */}
+              <button className="btn btn-sm btn-lib-secondary" onClick={handleRunExpire} disabled={actionBusy}>
+                <i className="bi bi-clock-history me-1"></i>Run Expiry Check
+              </button>
+            </div>
           </div>
 
           {/* ── 1. Pending Approval ── */}

@@ -162,31 +162,56 @@ router.post('/apply', protect, authorize('student'), asyncHandler(async (req, re
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH /api/library-cards/:id/approve   (Librarian OR Admin)
 // Status: pending → approved_pending_pickup
-// - Sets a 2-day pickup deadline
-// - Does NOT decrement book copies yet (book reserved only after pickup)
+// - Uses atomic findOneAndUpdate so concurrent approvals from two staff users
+//   are safe: only the first request wins; the second gets a 409.
+// - Does NOT decrement book copies yet (that happens at collect time).
 // ─────────────────────────────────────────────────────────────────────────────
 router.patch('/:id/approve', protect, authorize('librarian', 'admin'), asyncHandler(async (req, res) => {
-  const card = await LibraryCard.findById(req.params.id).populate('book');
-  if (!card) return ApiResponse.notFound(res, 'Library card not found');
+  // First, fetch to validate the card exists and check book availability
+  const existing = await LibraryCard.findById(req.params.id).populate('book');
+  if (!existing) return ApiResponse.notFound(res, 'Library card not found');
 
-  if (!['pending', 'rejected'].includes(card.status)) {
-    return ApiResponse.badRequest(res, `Cannot approve a card with status: ${card.status}`);
+  // If already approved (or any non-pending status), return a friendly 409
+  if (existing.status === 'approved_pending_pickup') {
+    return ApiResponse.conflict(res, 'Already approved — this request was approved by another user.');
+  }
+  if (existing.status === 'issued') {
+    return ApiResponse.conflict(res, 'Already approved and issued.');
+  }
+  if (!['pending', 'rejected'].includes(existing.status)) {
+    return ApiResponse.badRequest(res, `Cannot approve a card with status: ${existing.status}`);
   }
 
   // Check book is still available
-  if (card.book && card.book.availableCopies <= 0) {
+  if (existing.book && existing.book.availableCopies <= 0) {
     return ApiResponse.badRequest(res, 'Book is no longer available. No copies left.');
   }
 
   const now = new Date();
-  card.status              = 'approved_pending_pickup';
-  card.approvedByLibrarian = req.user._id;
-  card.approvedByAdmin     = req.user._id;
-  card.reviewedBy          = req.user._id;
-  card.reviewedAt          = now;
-  card.pickupDeadline      = addDays(now, PICKUP_DEADLINE_DAYS); // 2 days to collect
+  const pickupDeadline = addDays(now, PICKUP_DEADLINE_DAYS);
 
-  await card.save();
+  // Atomic update: only succeeds if status is still 'pending' or 'rejected'.
+  // If another request approved it between the check above and this update,
+  // findOneAndUpdate will return null and we return a conflict.
+  const card = await LibraryCard.findOneAndUpdate(
+    { _id: req.params.id, status: { $in: ['pending', 'rejected'] } },
+    {
+      $set: {
+        status:              'approved_pending_pickup',
+        approvedByLibrarian: req.user._id,
+        approvedByAdmin:     req.user._id,
+        reviewedBy:          req.user._id,
+        reviewedAt:          now,
+        pickupDeadline,
+      },
+    },
+    { new: true }
+  ).populate('book');
+
+  if (!card) {
+    // Race condition: another request already approved/changed this card
+    return ApiResponse.conflict(res, 'Already approved — this request was just approved by another user. Please refresh the page.');
+  }
 
   return ApiResponse.success(res, {
     message: `Card approved! Student must collect the book by ${card.pickupDeadline.toDateString()}.`,

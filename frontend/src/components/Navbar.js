@@ -80,6 +80,14 @@ const Navbar = () => {
                     <i className="bi bi-currency-rupee me-1"></i>Fines
                   </NavLink>
                 </li>
+                {/* Only Admin can view Users */}
+                {currentUser?.role?.toLowerCase() === 'admin' && (
+                  <li className="nav-item">
+                    <NavLink className="nav-link" to="/admin/users" onClick={close}>
+                      <i className="bi bi-people me-1"></i>Users
+                    </NavLink>
+                  </li>
+                )}
 
                 {/* User info + Logout */}
                 <li className="nav-item ms-lg-2">

@@ -239,3 +239,185 @@
 [2026-04-24 14:50:56] INFO: Login attempt for: om12@gmail.com
 [2026-04-24 14:50:57] INFO: Login successful: om12@gmail.com
 [2026-04-24 14:54:59] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-24 16:11:53] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-24 16:11:54] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-24 16:11:54] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-24 16:30:45] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-24 16:30:46] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-24 16:30:46] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-24 16:30:53] INFO: Login attempt for: om12@gmail.com
+[2026-04-24 16:30:54] INFO: Login successful: om12@gmail.com
+[2026-04-24 19:16:34] INFO: MongoDB reconnected
+[2026-04-24 19:16:34] INFO: MongoDB reconnected
+[2026-04-24 19:19:34] WARN: MongoDB disconnected
+[2026-04-24 19:19:35] INFO: MongoDB reconnected
+[2026-04-24 22:41:50] INFO: MongoDB reconnected
+[2026-04-24 22:41:50] INFO: MongoDB reconnected
+[2026-04-24 22:42:04] WARN: MongoDB disconnected
+[2026-04-24 22:42:04] INFO: MongoDB reconnected
+[2026-04-25 01:58:19] INFO: MongoDB reconnected
+[2026-04-25 01:58:19] INFO: MongoDB reconnected
+[2026-04-25 09:28:02] WARN: MongoDB disconnected
+[2026-04-25 09:28:05] INFO: MongoDB reconnected
+[2026-04-25 09:30:39] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-25 09:52:39] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-25 09:52:57] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-25 09:52:57] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-25 10:04:36] INFO: Registration attempt: salilbhatnagar1@gmail.com
+[2026-04-25 10:04:37] INFO: User created: 69ec445d51fedfa38f85bd5f
+[2026-04-25 10:05:38] INFO: MongoDB reconnected
+[2026-04-25 10:05:38] INFO: MongoDB reconnected
+[2026-04-25 10:05:46] ERROR: 500 - connection <monitor> to 159.41.226.174:27017 timed out - /api/books - GET - ::1
+[2026-04-25 10:05:54] ERROR: 500 - getaddrinfo ENOTFOUND ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net - /api/books - GET - ::1
+[2026-04-25 10:06:00] ERROR: 500 - getaddrinfo ENOTFOUND ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net - /api/auth/logout - POST - ::1
+[2026-04-25 10:07:01] INFO: Login attempt for: Admin01
+[2026-04-25 10:07:11] INFO: Login successful: Admin01
+[2026-04-25 10:07:40] INFO: Login attempt for: 0425cs231014
+[2026-04-25 10:07:40] INFO: Login successful: 0425cs231014
+[2026-04-25 10:12:15] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-25 10:12:16] INFO: Login successful: pawan12@gmail.com
+[2026-04-25 10:15:30] WARN: MongoDB disconnected
+[2026-04-25 10:15:41] INFO: MongoDB reconnected
+[2026-04-25 10:16:52] WARN: MongoDB disconnected
+[2026-04-25 10:17:02] INFO: MongoDB reconnected
+[2026-04-25 10:17:10] WARN: MongoDB disconnected
+[2026-04-25 10:17:20] INFO: MongoDB reconnected
+[2026-04-25 10:22:18] INFO: Login attempt for: Admin01
+[2026-04-25 10:22:18] INFO: Login successful: Admin01
+[2026-04-25 10:24:26] INFO: Login attempt for: om12@gmail.com
+[2026-04-25 10:24:26] INFO: Login successful: om12@gmail.com
+[2026-04-25 10:25:45] INFO: Login attempt for: instagramhume69@gmail.com
+[2026-04-25 10:25:46] INFO: Login successful: instagramhume69@gmail.com
+[2026-04-25 10:26:35] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-25 10:26:36] INFO: Login successful: pawan12@gmail.com
+[2026-04-25 10:26:51] WARN: MongoDB disconnected
+[2026-04-25 10:27:01] INFO: MongoDB reconnected
+[2026-04-25 11:15:51] INFO: Login attempt for: Admin01
+[2026-04-25 11:15:51] INFO: Login successful: Admin01
+[2026-04-25 11:18:21] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-25 11:18:22] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-25 11:18:22] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-25 11:18:25] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-25 17:51:01] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-25 17:51:02] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-25 17:51:02] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-25 17:51:59] INFO: Login attempt for: om12@gmail.com
+[2026-04-25 17:51:59] INFO: Login successful: om12@gmail.com
+[2026-04-25 17:52:11] INFO: Login attempt for: Admin01
+[2026-04-25 17:52:11] WARN: Login failed - role mismatch. Expected: admin, Got: Student
+[2026-04-25 17:52:14] INFO: Login attempt for: Admin01
+[2026-04-25 17:52:15] INFO: Login successful: Admin01
+[2026-04-25 17:52:27] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-25 17:52:27] INFO: Login successful: pawan12@gmail.com
+[2026-04-25 17:58:29] INFO: Login attempt for: instagramhume69@gmail.com
+[2026-04-25 17:58:29] INFO: Login successful: instagramhume69@gmail.com
+[2026-04-25 17:59:48] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-25 17:59:49] INFO: Login successful: pawan12@gmail.com
+[2026-04-25 18:00:18] INFO: Login attempt for: om12@gmail.com
+[2026-04-25 18:00:19] INFO: Login successful: om12@gmail.com
+[2026-04-25 18:01:54] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-25 18:10:08] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-25 18:10:08] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-25 18:10:08] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-25 18:10:33] INFO: Login attempt for: om12@gmail.com
+[2026-04-25 18:10:33] INFO: Login successful: om12@gmail.com
+[2026-04-25 18:10:56] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-25 18:10:56] INFO: Login successful: pawan12@gmail.com
+[2026-04-25 18:11:39] INFO: Login attempt for: Admin01
+[2026-04-25 18:11:39] INFO: Login successful: Admin01
+[2026-04-25 18:19:50] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-25 18:21:53] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-25 18:21:54] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-25 18:21:54] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-25 18:22:10] INFO: Login attempt for: om12@gmail.com
+[2026-04-25 18:22:10] INFO: Login successful: om12@gmail.com
+[2026-04-25 18:22:42] INFO: Login attempt for: instagramhume69@gmail.com
+[2026-04-25 18:22:42] INFO: Login successful: instagramhume69@gmail.com
+[2026-04-25 18:23:19] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-25 18:34:27] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-25 18:34:28] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-25 18:34:28] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-25 18:35:53] INFO: Login attempt for: Admin01
+[2026-04-25 18:35:53] INFO: Login successful: Admin01
+[2026-04-25 18:37:01] INFO: Login attempt for: Admin01
+[2026-04-25 18:37:01] INFO: Login successful: Admin01

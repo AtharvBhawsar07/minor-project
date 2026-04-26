@@ -23,6 +23,7 @@ import BooksPage      from './pages/BooksPage';
 import RequestCardPage from './pages/RequestCardPage';
 import IssuesPage     from './pages/IssuesPage';
 import FinesPage      from './pages/FinesPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import NotFoundPage   from './pages/NotFoundPage';
 
 function App() {
@@ -63,6 +64,11 @@ function App() {
             <Route path="/issues" element={
               <ProtectedRoute>
                 <IssuesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute roles={['Admin']}>
+                <AdminUsersPage />
               </ProtectedRoute>
             } />
 

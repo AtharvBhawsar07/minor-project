@@ -8,10 +8,15 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * @param {string[]} roles - Optional allowed roles (e.g. ['Admin'])
+ * @param {string[]} roles - Optional allowed roles (e.g. ['Admin', 'Librarian'])
  */
 const ProtectedRoute = ({ children, roles }) => {
-  const { isAuthenticated, currentUser } = useAuth();
+  const { isAuthenticated, currentUser, authLoading } = useAuth();
+
+  // Wait for session check to finish before deciding (prevents flash redirect)
+  if (authLoading) {
+    return <div className="text-center py-5">Loading...</div>;
+  }
 
   // Not logged in → go to login
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -25,3 +30,4 @@ const ProtectedRoute = ({ children, roles }) => {
 };
 
 export default ProtectedRoute;
+

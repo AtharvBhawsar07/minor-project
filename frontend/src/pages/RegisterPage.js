@@ -6,14 +6,14 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ROLES = ['Student', 'Librarian', 'Admin'];
+const ROLES = ['Student', 'Librarian'];
 
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
 
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', role: 'Student',
+    name: '', email: '', phone: '', role: 'Student', gender: 'Male',
     enrollmentNo: '', employeeId: '', semester: '', password: '', confirmPassword: '',
   });
   const [errors, setErrors]     = useState({});
@@ -39,7 +39,7 @@ const RegisterPage = () => {
     else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Enter a valid email address.';
 
     if (!form.phone.trim())               errs.phone   = 'Phone number is required.';
-    else if (!/^\d{10}$/.test(form.phone)) errs.phone  = 'Enter a valid 10-digit phone number.';
+    else if (!/^[6-9]\d{9}$/.test(form.phone)) errs.phone  = 'Enter a valid 10-digit Indian mobile number (starts with 6-9).';
 
     if (!form.role)                       errs.role    = 'Please select a role.';
 
@@ -53,11 +53,14 @@ const RegisterPage = () => {
       }
     }
 
-    if (['Librarian', 'Admin'].includes(form.role) && !form.employeeId.trim())
+    if (['Librarian'].includes(form.role) && !form.employeeId.trim())
       errs.employeeId = 'Employee ID is required.';
 
-    if (!form.password)                   errs.password = 'Password is required.';
-    else if (form.password.length < 6)    errs.password = 'Password must be at least 6 characters.';
+    if (!form.password) errs.password = 'Password is required.';
+    else if (form.password.length < 8) errs.password = 'Password must be at least 8 characters.';
+    else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])/.test(form.password)) {
+      errs.password = 'Must include uppercase, lowercase, number, and special character.';
+    }
 
     if (!form.confirmPassword)            errs.confirmPassword = 'Please confirm your password.';
     else if (form.password !== form.confirmPassword)
@@ -79,6 +82,7 @@ const RegisterPage = () => {
         email: form.email,
         phone: form.phone,
         role: form.role.toLowerCase(), // API expects lowercase role
+        gender: form.gender,
         studentId: form.role === 'Student' ? form.enrollmentNo : form.employeeId,
         semester: form.role === 'Student' ? Number(form.semester) : undefined,
         password: form.password
@@ -98,7 +102,7 @@ const RegisterPage = () => {
 
   // ── Reset ────────────────────────────────────────────────
   const handleReset = () => {
-    setForm({ name: '', email: '', phone: '', role: 'Student', enrollmentNo: '', employeeId: '', semester: '', password: '', confirmPassword: '' });
+    setForm({ name: '', email: '', phone: '', role: 'Student', gender: 'Male', enrollmentNo: '', employeeId: '', semester: '', password: '', confirmPassword: '' });
     setErrors({});
     setSuccess('');
   };
@@ -148,13 +152,24 @@ const RegisterPage = () => {
             </div>
 
             {/* Role */}
-            <div className="col-12">
+            <div className="col-md-6">
               <label className="lib-label">Role *</label>
               <select name="role" value={form.role} onChange={handleChange}
                 className={`form-select lib-form-control ${errors.role ? 'is-invalid' : ''}`}>
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
               {errors.role && <div className="invalid-feedback">{errors.role}</div>}
+            </div>
+
+            {/* Gender */}
+            <div className="col-md-6">
+              <label className="lib-label">Gender *</label>
+              <select name="gender" value={form.gender} onChange={handleChange}
+                className={`form-select lib-form-control ${errors.gender ? 'is-invalid' : ''}`}>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+              {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
             </div>
 
             {/* Conditional ID field */}
@@ -184,7 +199,7 @@ const RegisterPage = () => {
                 {errors.semester && <div className="invalid-feedback">{errors.semester}</div>}
               </div>
             )}
-            {['Librarian', 'Admin'].includes(form.role) && (
+            {['Librarian'].includes(form.role) && (
               <div className="col-12">
                 <label className="lib-label">Employee ID *</label>
                 <input type="text" name="employeeId" value={form.employeeId} onChange={handleChange}
