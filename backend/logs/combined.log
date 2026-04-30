@@ -421,3 +421,59 @@
 [2026-04-25 18:35:53] INFO: Login successful: Admin01
 [2026-04-25 18:37:01] INFO: Login attempt for: Admin01
 [2026-04-25 18:37:01] INFO: Login successful: Admin01
+[2026-04-28 13:52:45] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-28 13:52:47] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-28 13:53:55] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-28 13:53:56] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-28 13:53:56] ERROR: Uncaught Exception: listen EADDRINUSE: address already in use :::5000
+[2026-04-28 13:53:56] INFO: UNCAUGHT_EXCEPTION received. Starting graceful shutdown...
+[2026-04-28 13:53:56] WARN: MongoDB disconnected
+[2026-04-28 13:54:40] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-28 13:54:41] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-28 13:54:41] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-28 13:55:04] INFO: Login attempt for: Admin01
+[2026-04-28 13:55:05] INFO: Login successful: Admin01
+[2026-04-28 14:30:27] INFO: MongoDB reconnected
+[2026-04-28 14:30:27] INFO: MongoDB reconnected
+[2026-04-28 14:30:38] WARN: MongoDB disconnected
+[2026-04-28 14:30:38] INFO: MongoDB reconnected
+[2026-04-28 14:31:08] INFO: Login attempt for: Admin01
+[2026-04-28 14:31:10] INFO: Login successful: Admin01
+[2026-04-28 16:03:18] INFO: MongoDB reconnected
+[2026-04-28 16:03:18] INFO: MongoDB reconnected
+[2026-04-28 16:53:45] INFO: MongoDB reconnected
+[2026-04-28 17:17:03] WARN: MongoDB disconnected
+[2026-04-28 17:17:04] INFO: MongoDB reconnected
+[2026-04-28 17:27:02] INFO: SIGINT received. Starting graceful shutdown...
+[2026-04-29 13:00:08] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-04-29 13:00:10] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-04-29 13:00:10] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-04-29 15:32:01] INFO: MongoDB reconnected
+[2026-04-29 15:32:01] INFO: MongoDB reconnected
+[2026-04-29 15:33:19] INFO: Login attempt for: Admin01
+[2026-04-29 15:33:20] INFO: Login successful: Admin01
+[2026-04-29 15:36:09] INFO: Login attempt for: Admin01
+[2026-04-29 15:36:10] INFO: Login successful: Admin01
+[2026-04-29 15:37:09] INFO: Login attempt for: pawan12@gmail.com
+[2026-04-29 15:37:10] INFO: Login successful: pawan12@gmail.com
+[2026-04-29 17:09:02] INFO: MongoDB reconnected
