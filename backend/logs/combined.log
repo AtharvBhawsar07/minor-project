@@ -477,3 +477,34 @@
 [2026-04-29 15:37:09] INFO: Login attempt for: pawan12@gmail.com
 [2026-04-29 15:37:10] INFO: Login successful: pawan12@gmail.com
 [2026-04-29 17:09:02] INFO: MongoDB reconnected
+[2026-05-09 12:50:01] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-05-09 12:50:31] WARN: MongoDB disconnected
+[2026-05-09 12:50:31] WARN: Library card index cleanup: Connection pool for ac-pkmkpck-shard-00-01.e0lyisl.mongodb.net:27017 was cleared because another operation failed with: "read ECONNRESET"
+[2026-05-09 12:50:33] INFO: MongoDB reconnected
+[2026-05-09 12:50:35] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-05-09 12:50:35] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-05-09 12:51:26] INFO: SIGINT received. Starting graceful shutdown...
+[2026-05-09 13:07:29] INFO: MongoDB Connected: ac-pkmkpck-shard-00-00.e0lyisl.mongodb.net/digitallibrary
+[2026-05-09 13:07:30] INFO: Due-date reminder job finished. Sent 0 reminder(s).
+[2026-05-09 13:07:30] INFO: 
+╔══════════════════════════════════════════════════════════╗
+║          DIGITAL LIBRARY MANAGEMENT SYSTEM               ║
+║                  Server Started                          ║
+╠══════════════════════════════════════════════════════════╣
+║  Environment : development                              ║
+║  Port        : 5000                                     ║
+║  API Base    : http://localhost:5000/api                      ║
+║  Health      : http://localhost:5000/api/health                ║
+╚══════════════════════════════════════════════════════════╝
+    
+[2026-05-09 13:09:36] INFO: SIGINT received. Starting graceful shutdown...

@@ -29,6 +29,26 @@ const statusLabel = (status = '') => {
 const badgeClass = (status = '') =>
   `badge-role badge-${status.replace(/_/g, '-')}`;
 
+// ── Role Badge Style ──────────────────────────────────────────
+const getRoleStyle = (role) => {
+  const r = (role || '').toLowerCase();
+  const baseStyle = { 
+    padding: '0.45rem 0.85rem', 
+    fontSize: '0.9rem', 
+    borderRadius: '6px', 
+    fontWeight: '600',
+    display: 'inline-block',
+    marginTop: '0.4rem',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+  };
+  
+  if (r === 'student') return { ...baseStyle, backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' }; // Light blue
+  if (r === 'librarian') return { ...baseStyle, backgroundColor: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' }; // Light teal
+  if (r === 'admin') return { ...baseStyle, backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }; // Light red
+  
+  return { ...baseStyle, backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' };
+};
+
 const DashboardPage = () => {
   const { currentUser } = useAuth();
   const role      = currentUser?.role || '';
@@ -247,7 +267,7 @@ const DashboardPage = () => {
         </div>
         <div>
           <h3 className="mb-0">Hello {currentUser?.name}</h3>
-          <span className="badge bg-secondary text-capitalize">{role} Dashboard</span>
+          <span className="text-capitalize" style={getRoleStyle(role)}>{role} Dashboard</span>
         </div>
       </div>
 
