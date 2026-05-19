@@ -6,7 +6,9 @@ const schemas = {
   // User registration
   user: Joi.object({
     name:       Joi.string().trim().min(2).max(50).required(),
-    email:      Joi.string().email().required(),
+    email:      Joi.string().pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/).required().messages({
+      'string.pattern.base': 'Invalid email format'
+    }),
     password:   Joi.string().min(6).required(),
     role:       Joi.string().valid('student', 'librarian', 'admin').optional(),
     studentId:  Joi.string().trim().optional().allow(''),
@@ -56,7 +58,9 @@ const validate = (schema, source = 'body') => {
         field:   d.path.join('.'),
         message: d.message,
       }));
-      return res.status(400).json({ success: false, message: 'Validation failed', errors });
+      // Return specific error message instead of generic "Validation failed"
+      const message = errors[0].message.replace(/"/g, '');
+      return res.status(400).json({ success: false, message, errors });
     }
 
     // Put validated value back

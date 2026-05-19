@@ -36,7 +36,7 @@ const RegisterPage = () => {
     else if (form.name.trim().length < 3) errs.name    = 'Name must be at least 3 characters.';
 
     if (!form.email.trim())               errs.email   = 'Email is required.';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Enter a valid email address.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email format';
 
     if (!form.phone.trim())               errs.phone   = 'Phone number is required.';
     else if (!/^[6-9]\d{9}$/.test(form.phone)) errs.phone  = 'Enter a valid 10-digit Indian mobile number (starts with 6-9).';
