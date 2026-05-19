@@ -36,10 +36,10 @@ const RegisterPage = () => {
     else if (form.name.trim().length < 3) errs.name    = 'Name must be at least 3 characters.';
 
     if (!form.email.trim())               errs.email   = 'Email is required.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email format';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Please enter a valid email';
 
     if (!form.phone.trim())               errs.phone   = 'Phone number is required.';
-    else if (!/^[6-9]\d{9}$/.test(form.phone)) errs.phone  = 'Enter a valid 10-digit Indian mobile number (starts with 6-9).';
+    else if (!/^[6-9]\d{9}$/.test(form.phone)) errs.phone  = 'Phone number must be 10 digits starting with 6-9';
 
     if (!form.role)                       errs.role    = 'Please select a role.';
 
@@ -59,7 +59,7 @@ const RegisterPage = () => {
     if (!form.password) errs.password = 'Password is required.';
     else if (form.password.length < 8) errs.password = 'Password must be at least 8 characters.';
     else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])/.test(form.password)) {
-      errs.password = 'Must include uppercase, lowercase, number, and special character.';
+      errs.password = 'Password is too weak. Include uppercase, lowercase, number, and special character.';
     }
 
     if (!form.confirmPassword)            errs.confirmPassword = 'Please confirm your password.';

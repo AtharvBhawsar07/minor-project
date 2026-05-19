@@ -6,11 +6,12 @@ const schemas = {
   // User registration
   user: Joi.object({
     name:       Joi.string().trim().min(2).max(50).required(),
-    email:      Joi.string().pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/).required().messages({
-      'string.pattern.base': 'Invalid email format'
+    email:      Joi.string().email({ tlds: false }).required().messages({
+      'string.email': 'Invalid email format'
     }),
     password:   Joi.string().min(6).required(),
     role:       Joi.string().valid('student', 'librarian', 'admin').optional(),
+    gender:     Joi.string().valid('Male', 'Female').optional(),
     studentId:  Joi.string().trim().optional().allow(''),
     department: Joi.string().trim().optional().allow(''),
     phone:      Joi.string().trim().optional().allow(''),
